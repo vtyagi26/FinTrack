@@ -34,17 +34,5 @@ function database() {
 
 database();
 
-// const uri = "mongodb+srv://JAMS:NEUWebDesignJAMS@stock.7r94bfe.mongodb.net/?retryWrites=true&w=majority";
-// mongodb+srv://JAMS:<password>@stock.7r94bfe.mongodb.net/?retryWrites=true&w=majority
-// const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-// // // client.connect(err => {
-// // //     const collection = client.db("cluster0").collection("users");
-// // //     // perform actions on the collection object
-// // //     // client.close();
-// // //   });
-// client.connect();
-// await listDatabases(client);
 
-// mongoose.connect('mongodb+srv://JAMS:WebDesignJAMS@cluster0.cmrmfun.mongodb.net/?retryWrites=true&w=majority', { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-// mongoose.connect('mongodb://localhost:27017/projecttestdb');
 export default app;
