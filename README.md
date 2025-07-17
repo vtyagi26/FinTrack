@@ -1,6 +1,4 @@
-Here is your **entire `README.md` content in one file**, exactly as requested — with complete setup instructions, `.env` formats, tech stack, structure, screenshots, API routes, and Git commands:
 
----
 
 ```markdown
 # 💹 FinTrack
