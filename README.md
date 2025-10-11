@@ -1,6 +1,3 @@
-
-
-```markdown
 # 💹 FinTrack
 
 **FinTrack** is a full-stack stock trading and portfolio management dashboard. It lets users sign up, log in, view real-time stock prices, place trades, and track their portfolios. The app is built using the MERN stack (MongoDB, Express, React, Node.js) and integrates with the Finnhub API for market data.
