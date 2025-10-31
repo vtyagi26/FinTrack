@@ -1,0 +1,106 @@
+.signup-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(to right, #dababa, #f0f9ff); /* 🎯 moved here */
+}
+
+.signup-form {
+  background: #d3cece;
+  padding: 2.5rem 2rem;
+  border-radius: 15px;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 400px;
+  transition: all 0.3s ease;
+}
+
+.signup-form:hover {
+  transform: scale(1.01);
+}
+
+.signup-form h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #1e3a8a;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.redirect-text {
+  margin-top: 1rem;
+  text-align: center;
+  color: #4b5563;
+}
+
+.redirect-text a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.redirect-text a:hover {
+  text-decoration: underline;
+}
+
+.spinner-container {
+  text-align: center;
+  margin-top: 80px;
+}
+
+.spinner {
+  margin: 0 auto 20px;
+  width: 40px;
+  height: 40px;
+  border: 5px solid #ccc;
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,46 @@
+.stock-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 20px;
+}
+
+.stock-card {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  padding: 16px 20px;
+  border-radius: 12px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transition: 0.3s ease;
+}
+
+.stock-card:hover {
+  transform: scale(1.03);
+}
+
+.stock-card h3 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.stock-card .price {
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+}
+
+.stock-card .change {
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.change.up {
+  color: #12b76a;
+}
+
+.change.down {
+  color: #f04438;
+}
