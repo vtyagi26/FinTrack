@@ -12,7 +12,7 @@
 | Backend       | Node.js, Express                       |
 | Database      | MongoDB + Mongoose                     |
 | Auth          | JWT + HTTP-only cookies + bcrypt       |
-| API           | Finnhub API                            |
+| API           | Cohere and Alpha Vantage API                            |
 
 ---
 
