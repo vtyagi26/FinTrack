@@ -64,23 +64,27 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto bg-gray-900 text-white rounded-lg shadow">
+   <div className="p-6 w-full h-screen bg-gray-900 text-white">
+
       <h2 className="text-2xl font-bold mb-4">Finance Chatbot</h2>
 
-      <div className="h-80 overflow-y-auto mb-4 border border-gray-700 rounded p-3 space-y-3">
+      <div className="h-[500px] overflow-y-auto mb-4 border border-gray-700 rounded p-3 space-y-3">
         {messages.length === 0 && (
-          <p className="text-gray-400">Ask me anything about stocks or finance!</p>
+          <p className="text-gray-400 text-center">Ask me anything about stocks or finance!</p>
         )}
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`p-2 rounded ${
-              msg.role === "user" ? "bg-blue-600 text-right" : "bg-gray-700"
-            }`}
-          >
-            {msg.content}
-          </div>
-        ))}
+{messages.map((msg, i) => (
+  <div
+    key={i}
+    className={`p-4 rounded-lg max-w-3xl text-lg leading-relaxed whitespace-pre-wrap ${
+      msg.role === "user"
+        ? "bg-blue-600 text-white text-right ml-auto"
+        : "bg-black text-gray-100"
+    }`}
+  >
+    {msg.content}
+  </div>
+))}
+
         {loading && <p className="text-gray-400">Thinking...</p>}
       </div>
 
