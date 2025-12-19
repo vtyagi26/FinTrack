@@ -1,134 +1,167 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, Routes, Route, Link } from "react-router-dom";
-import Chatbot from "./Chatbot"; // adjust path if needed
+import Chatbot from "./Chatbot"; 
 import Invested from "../pages/Invested";
 import Returns from "../pages/Returns";
 import ProfitLoss from "../pages/ProfitLoss";
 import MarketAnalytics from "../pages/MarketAnalytics";
 import BuySell from "../pages/BuySell";
 
-
-
-
-
 const DashboardHome = () => {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // This ref prevents the double-call in React Strict Mode
+  const fetchLock = useRef(false);
 
-  // Add stock symbols you want to track
   const symbols = ["AAPL", "MSFT", "TSLA"];
+  const CACHE_KEY = "stock_cache_v1";
+  const CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes
 
   useEffect(() => {
+    // 1. Prevent double execution
+    if (fetchLock.current) return;
+    fetchLock.current = true;
+
+    let isMounted = true;
+    const controller = new AbortController();
+
     const fetchStockData = async () => {
       try {
-        const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
-        if (!apiKey) throw new Error("Missing Alpha Vantage API key in .env");
+        setLoading(true);
+        setError("");
 
+        // 2. Check Cache
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { timestamp, data } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_EXPIRY) {
+            setStocks(data);
+            setLoading(false);
+            return;
+          }
+        }
+
+        const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
         const results = [];
 
         for (let i = 0; i < symbols.length; i++) {
-          const symbol = symbols[i];
+          if (!isMounted) break;
 
-          // Throttle requests to avoid Alpha Vantage 5-req/min limit
-          // eslint-disable-next-line no-await-in-loop
+          const symbol = symbols[i];
           const res = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
+            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`,
+            { signal: controller.signal }
           );
           const data = await res.json();
-          console.log(`Response for ${symbol}:`, data);
+
+          // Check for the "Note" which is Alpha Vantage's way of saying "Slow down"
+          if (data["Note"] || data["Information"]) {
+            throw new Error("API Limit Reached. Using last known data or please wait 1 minute.");
+          }
 
           const quote = data["Global Quote"];
           if (quote && quote["05. price"]) {
             results.push({
               symbol: quote["01. symbol"],
-              price: quote["05. price"],
-              high: quote["03. high"],
-              low: quote["04. low"],
+              price: parseFloat(quote["05. price"]).toFixed(2),
+              high: parseFloat(quote["03. high"]).toFixed(2),
+              low: parseFloat(quote["04. low"]).toFixed(2),
               change: quote["09. change"],
               changePercent: quote["10. change percent"],
             });
           }
 
-          // Wait 12 seconds between requests (5 req/min limit)
-          if (i < symbols.length - 1) {
-            // eslint-disable-next-line no-await-in-loop
-            await new Promise((resolve) => setTimeout(resolve, 12000));
+          // 3. The Wait Logic (15 seconds)
+          if (i < symbols.length - 1 && isMounted) {
+            await new Promise((resolve) => setTimeout(resolve, 15000));
           }
         }
 
-        if (!results.length) throw new Error("No stock data received.");
-        setStocks(results);
+        if (isMounted && results.length > 0) {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            data: results
+          }));
+          setStocks(results);
+        }
       } catch (err) {
-        console.error(err);
-        setError(err.message);
+        if (isMounted) {
+          setError(err.message);
+          // If we hit a limit but have old cache, show it instead of an error
+          const backup = localStorage.getItem(CACHE_KEY);
+          if (backup) setStocks(JSON.parse(backup).data);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchStockData();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   return (
     <div className="p-6">
       <h2 className="text-3xl font-bold mb-6 text-white">Analytics Overview</h2>
-      {/* Buttons */}
+      
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-        <Link
-          to="/dashboard/invested"
-          className="bg-gray-800 rounded-lg shadow text-white flex items-center justify-center h-40 hover:bg-gray-700 text-lg font-semibold"
-        >
-          Invested
-        </Link>
-        <Link
-          to="/dashboard/returns"
-          className="bg-gray-800 rounded-lg shadow text-white flex items-center justify-center h-40 hover:bg-gray-700 text-lg font-semibold"
-        >
-          Returns
-        </Link>
-        <Link
-          to="/dashboard/buy-sell"
-          className="bg-gray-800 rounded-lg shadow text-white flex items-center justify-center h-40 hover:bg-gray-700 text-lg font-semibold"
-        >
-          Buy / Sell
-        </Link>
-        <Link
-          to="/dashboard/market-analytics"
-          className="bg-gray-800 rounded-lg shadow text-white flex items-center justify-center h-40 hover:bg-gray-700 text-lg font-semibold"
-        >
-          Market Analytics
-        </Link>
+        {[
+          { label: "Invested", path: "invested" },
+          { label: "Returns", path: "returns" },
+          { label: "Buy / Sell", path: "buy-sell" },
+          { label: "Market Analytics", path: "market-analytics" }
+        ].map((item) => (
+          <Link
+            key={item.label}
+            to={`/dashboard/${item.path}`}
+            className="bg-gray-800 rounded-lg shadow text-white flex items-center justify-center h-40 hover:bg-gray-700 transition-all border border-gray-700"
+          >
+            {item.label}
+          </Link>
+        ))}
       </div>
 
-      {/* Stock Data */}
-      <h3 className="text-2xl font-semibold text-white mb-4">Stocks at a Glance</h3>
-      {loading && <p className="text-gray-400">Loading stock data...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {!loading && !error && (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {stocks.map((stock) => (
-            <div
-              key={stock.symbol}
-              className="bg-gray-800 rounded-lg shadow p-6 text-white"
-            >
-              <h4 className="text-xl font-bold mb-2">{stock.symbol}</h4>
-              <p>Price: {stock.price}</p>
-              <p>High: {stock.high}</p>
-              <p>Low: {stock.low}</p>
-              <p>
-                Change: {stock.change} ({stock.changePercent})
-              </p>
-            </div>
-          ))}
+      <h3 className="text-2xl font-semibold text-white mb-4">Live Market Watch</h3>
+      
+      {loading && (
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+          <p className="text-gray-400">Fetching stocks... (Wait 15s)</p>
         </div>
       )}
+      
+      {error && !stocks.length && (
+        <div className="bg-red-900/30 border border-red-500 text-red-200 p-4 rounded-lg mb-6 text-sm">
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {stocks.map((stock) => (
+          <div key={stock.symbol} className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-sm font-bold bg-gray-700 px-3 py-1 rounded text-blue-400">{stock.symbol}</span>
+              <span className={`text-sm ${parseFloat(stock.change) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {stock.changePercent}
+              </span>
+            </div>
+            <p className="text-4xl font-mono text-white mb-4">${stock.price}</p>
+            <div className="grid grid-cols-2 text-xs text-gray-400 uppercase tracking-wider">
+              <div>High: <span className="text-white block text-sm">${stock.high}</span></div>
+              <div>Low: <span className="text-white block text-sm">${stock.low}</span></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
-
-// Placeholder components for pages
-
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -150,34 +183,26 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  if (!user) return <p className="text-center text-white mt-10">Loading...</p>;
+  if (!user) return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Authenticating...</div>;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <nav className="bg-gray-800 shadow px-10 py-10 flex justify-between items-center">
-        {/* Welcome Link */}
-        <Link to="/dashboard" className="text-xl font-bold hover:underline">
-          Welcome to your Dashboard
+      <nav className="bg-gray-800 border-b border-gray-700 px-8 py-4 flex justify-between items-center">
+        <Link to="/dashboard" className="text-2xl font-black tracking-tighter text-blue-500">
+          FIN<span className="text-white">TRACK</span>
         </Link>
 
-        <div className="flex space-x-4">
-          {/* Chat with AI Button */}
-          <Link
-            to="/dashboard/chatbot"
-            className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded font-semibold"
-          >
-            Chat with AI
+        <div className="flex items-center space-x-6">
+          <Link to="/dashboard/chatbot" className="text-gray-300 hover:text-white font-medium transition-colors">
+            AI Assistant
           </Link>
-          <button
-            onClick={handleLogout}
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
-          >
+          <button onClick={handleLogout} className="bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-600/50 px-4 py-1.5 rounded-lg transition-all text-sm font-semibold">
             Logout
           </button>
         </div>
       </nav>
 
-      <div className="flex-grow">
+      <main className="flex-grow">
         <Routes>
           <Route index element={<DashboardHome />} />
           <Route path="invested" element={<Invested />} />
@@ -187,7 +212,7 @@ export default function Dashboard() {
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="buy-sell" element={<BuySell />} />
         </Routes>
-      </div>
+      </main>
     </div>
   );
 }
