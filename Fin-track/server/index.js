@@ -8,7 +8,7 @@ import morgan from "morgan";
 
 import portfolioRoutes from "./routes/portfolio.js";
 import marketRoutes from "./routes/market.js";
-import authRoutes from "./routes/authRoutes.js"; // ✅ fixed import
+import authRoutes from "./routes/authRoutes.js";
 import tradeRoutes from "./routes/trades.js";
 
 
