@@ -146,4 +146,3 @@ Dashboard available at `http://localhost:5174`
 ## 👤 Maintainer
 
 **Vaibhav Tyagi**
-
