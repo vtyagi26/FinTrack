@@ -8,7 +8,7 @@ const generateToken = (id) => {
 export const signup = async (req, res) => {
   try {
     const { email, password, name } = req.body;
-    const emailLower = email.toLowerCase(); // ✅ normalize email
+    const emailLower = email.toLowerCase();
 
     let user = await User.findOne({ email: emailLower });
     if (user) return res.status(400).json({ message: "User already exists" });

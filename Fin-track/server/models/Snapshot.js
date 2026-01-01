@@ -1,4 +1,4 @@
-import mongoose from "mongoose"; // ✅ added
+import mongoose from "mongoose";
 
 const SnapshotSchema = new mongoose.Schema(
   {
