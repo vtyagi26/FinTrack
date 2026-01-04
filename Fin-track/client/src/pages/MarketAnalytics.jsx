@@ -87,7 +87,7 @@ const MarketAnalytics = () => {
                   dataKey="value" 
                   stroke="#3b82f6" 
                   strokeWidth={3}
-                  fillOpacity={1} 
+                  fillOpacity={1}   
                   fill="url(#colorValue)" 
                 />
               </AreaChart>
@@ -135,26 +135,6 @@ const MarketAnalytics = () => {
           </div>
         </div>
 
-      </div>
-
-      {/* Market Statistics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl">
-            <p className="text-gray-500 text-xs uppercase">Volatility (Beta)</p>
-            <p className="text-xl font-bold">1.24</p>
-          </div>
-          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl">
-            <p className="text-gray-500 text-xs uppercase">Diversification Score</p>
-            <p className="text-xl font-bold">82/100</p>
-          </div>
-          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl">
-            <p className="text-gray-500 text-xs uppercase">Avg. Daily Move</p>
-            <p className="text-xl font-bold text-green-400">+0.85%</p>
-          </div>
-          <div className="bg-gray-800/50 border border-gray-700 p-4 rounded-xl">
-            <p className="text-gray-500 text-xs uppercase">Risk Level</p>
-            <p className="text-xl font-bold text-yellow-500">Moderate</p>
-          </div>
       </div>
     </div>
   );

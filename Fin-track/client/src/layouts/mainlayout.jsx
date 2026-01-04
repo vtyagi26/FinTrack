@@ -1,4 +1,3 @@
-// src/layouts/MainLayout.jsx
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 

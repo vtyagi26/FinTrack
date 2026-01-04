@@ -20,7 +20,7 @@ import BuySell from "../pages/BuySell";
 // --- SIDEBAR COMPONENT ---
 const Sidebar = ({ handleLogout }) => {
   const location = useLocation();
-  
+
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Invested", path: "/dashboard/invested", icon: <Wallet size={20} /> },

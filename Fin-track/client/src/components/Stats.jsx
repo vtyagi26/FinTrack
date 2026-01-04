@@ -2,8 +2,7 @@ export default function MarketProblems() {
   return (
     <section id="market-problems" className="py-20 bg-black text-white">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center px-6">
-        
-        {/* Left Content */}
+
         <div>
           <h2 className="text-3xl md:text-4xl font-bold mb-6">
             Put yourself a step ahead in today's stock market
@@ -16,7 +15,6 @@ export default function MarketProblems() {
           </ul>
         </div>
 
-        {/* Right Image (replace src with your image) */}
         <div className="flex justify-center">
           <img
             src="\public\stimg.jpg"

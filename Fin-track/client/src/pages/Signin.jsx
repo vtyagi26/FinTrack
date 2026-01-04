@@ -39,12 +39,12 @@ const SignIn = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
+    <div className="flex justify-center items-center min-h-screen bg-yellow-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg shadow-md w-96"
+        className="bg-gray-300 p-11 rounded-lg shadow-md w-auto"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
+        <h2 className="text-4xl font-bold mb-6 text-left text-gray-800">
           Sign In
         </h2>
 
@@ -53,7 +53,7 @@ const SignIn = () => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-4 px-4 py-2 border rounded focus:ring focus:ring-indigo-300"
+          className="w-full mb-4 px-4 py-4 border rounded focus:ring focus:ring-indigo-300"
           required
         />
         <input
@@ -61,7 +61,7 @@ const SignIn = () => {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-6 px-4 py-2 border rounded focus:ring focus:ring-indigo-300"
+          className="w-full mb-6 px-4 py-4 border rounded focus:ring focus:ring-indigo-300"
           required
         />
 
@@ -69,7 +69,7 @@ const SignIn = () => {
 
         <button
           type="submit"
-          className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition"
+          className="w-full bg-indigo-600 text-white py-4 rounded hover:bg-indigo-700 transition"
         >
           Sign In
         </button>

@@ -5,9 +5,8 @@ import Features from "./components/Features";
 import Stats from "./components/Stats";
 import SignIn from "./pages/Signin";
 import SignUp from "./pages/Signup";
-import MainLayout from "./layouts/MainLayout";
+import MainLayout from "./layouts/mainlayout";
 import Dashboard from "./pages/Dashboard";
-
 
 import AOS from "aos";
 import "aos/dist/aos.css";

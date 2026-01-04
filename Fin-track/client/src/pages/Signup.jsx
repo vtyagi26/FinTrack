@@ -36,16 +36,16 @@ const SignUp = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow w-100">
-        <h2 className="text-2xl font-bold mb-4">Sign Up</h2>
+    <div className="flex justify-center items-center min-h-screen bg-yellow-600">
+      <form onSubmit={handleSubmit} className="bg-gray-200 p-11 rounded shadow w-100">
+        <h2 className="text-3xl font-bold mb-4">Sign Up</h2>
 
         <input
           type="text"
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full mb-3 p-2 border rounded"
+          className="w-full mb-3 p-4 border rounded"
           required
         />
         <input
@@ -53,7 +53,7 @@ const SignUp = () => {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full mb-3 p-2 border rounded"
+          className="w-full mb-3 p-4 border rounded"
           required
         />
         <input
@@ -61,7 +61,7 @@ const SignUp = () => {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-3 p-2 border rounded"
+          className="w-full mb-3 p-4 border rounded"
           required
         />
 
@@ -69,7 +69,7 @@ const SignUp = () => {
 
         <button
           type="submit"
-          className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600"
+          className="w-full bg-green-500 text-white py-4 rounded hover:bg-green-600"
         >
           Sign Up
         </button>
