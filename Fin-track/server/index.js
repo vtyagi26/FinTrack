@@ -10,6 +10,8 @@ import portfolioRoutes from "./routes/portfolio.js"; //endpoints
 import marketRoutes from "./routes/market.js"; //endpoints
 import authRoutes from "./routes/authRoutes.js"; //endpoints
 import tradeRoutes from "./routes/trades.js"; //endpoints
+import userRoutes from "./routes/userRoutes.js";
+import tradeRoutes from "./routes/tradeRoutes.js"; // wherever your executeTrade is linked
 
 
 dotenv.config(); // loads env var
@@ -26,6 +28,8 @@ app.use("/api/trades", tradeRoutes); // routes
 app.use("/api/auth", authRoutes); // routes
 app.use("/api/portfolio", portfolioRoutes); // routes
 app.use("/api/market", marketRoutes); // routes
+app.use("/api/users", userRoutes);
+app.use("/api/trades", tradeRoutes);
 
 app.get("/", (req, res) => res.send("API running...")); // simple test route to confirm server is running
 
