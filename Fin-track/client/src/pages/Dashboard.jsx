@@ -93,46 +93,47 @@ const fetchStockData = async () => {
   try {
     setLoading(true);
     const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
-    const results = [];
+    const currentResults = [];
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      // Add a cache-buster (_=Date.now()) to force a fresh look at the API
       const res = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}&_=${Date.now()}`
+        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
       );
       
       const data = await res.json();
-      console.log(`Data for ${symbol}:`, data); // CHECK YOUR CONSOLE HERE
-
-      if (data["Note"] || data["Information"]) {
-        setError("API Limit Reached (25/day). Try again tomorrow or use a different key.");
-        break; 
-      }
-
       const quote = data["Global Quote"];
+
       if (quote && quote["05. price"]) {
-        results.push({
+        const stockObj = {
           symbol: quote["01. symbol"],
           price: parseFloat(quote["05. price"]).toFixed(2),
           high: parseFloat(quote["03. high"]).toFixed(2),
           low: parseFloat(quote["04. low"]).toFixed(2),
           changePercent: quote["10. change percent"],
-        });
-        setStocks([...results]); // Update UI immediately per stock
+        };
+
+        currentResults.push(stockObj);
+        
+        // --- THE FIX: Update state AND localStorage immediately ---
+        setStocks([...currentResults]); 
+        localStorage.setItem("stock_cache_v1", JSON.stringify({
+          data: currentResults,
+          timestamp: Date.now()
+        }));
       }
 
+      // Respect API limits (15s delay)
       if (i < symbols.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 15000)); // 15s delay
+        await new Promise((resolve) => setTimeout(resolve, 15000));
       }
     }
   } catch (err) {
-    setError("Failed to fetch. Check internet or API status.");
+    setError("Sync failed.");
   } finally {
     setLoading(false);
   }
 };
-
     fetchStockData();
     return () => { isMounted = false; controller.abort(); };
   }, []);
