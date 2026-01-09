@@ -3,6 +3,16 @@ import Holding from "../models/Holding.js";
 import User from "../models/User.js";
 import Trade from "../models/Trade.js";
 
+export const getTradeHistory = async (req, res) => {
+  try {
+    // Find all trades for the logged-in user, sorted by newest first
+    const trades = await Trade.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    res.status(200).json(trades);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching trade history", error: err.message });
+  }
+};
+
 export const executeTrade = async (req, res) => {
   try {
     const { symbol, quantity, price, type } = req.body;

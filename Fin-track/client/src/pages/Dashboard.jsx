@@ -7,8 +7,10 @@ import {
   ArrowLeftRight, 
   BarChart3, 
   MessageSquare, 
-  LogOut 
+  LogOut,
+  Clock
 } from "lucide-react"; // Using Lucide for cleaner icons
+import TransactionHistory from "../pages/TransactionHistory";
 
 import Chatbot from "./Chatbot";
 import Invested from "../pages/Invested";
@@ -26,6 +28,7 @@ const Sidebar = ({ handleLogout }) => {
     { label: "Invested", path: "/dashboard/invested", icon: <Wallet size={20} /> },
     { label: "Returns", path: "/dashboard/returns", icon: <TrendingUp size={20} /> },
     { label: "Buy / Sell", path: "/dashboard/buy-sell", icon: <ArrowLeftRight size={20} /> },
+    { label: "History", path: "/dashboard/history", icon: <Clock size={20} /> },
     { label: "Market Analytics", path: "/dashboard/market-analytics", icon: <BarChart3 size={20} /> },
     { label: "AI Assistant", path: "/dashboard/chatbot", icon: <MessageSquare size={20} /> },
   ];
@@ -233,6 +236,7 @@ export default function Dashboard() {
           <Route path="market-analytics" element={<MarketAnalytics />} />
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="buy-sell" element={<BuySell />} />
+          <Route path="history" element={<TransactionHistory />} />
         </Routes>
       </main>
     </div>
