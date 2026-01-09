@@ -138,7 +138,7 @@ Dashboard available at `http://localhost:5174`
 
 ## 🙌 Acknowledgements
 
-* 💰 Market data from [Finnhub](https://finnhub.io)
+* 💰 Market data from ALPHA_VANTAGE
 * 🎨 UI powered by Bootstrap + TailwindCSS
 
 ---
