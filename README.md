@@ -12,7 +12,7 @@
 | Backend       | Node.js, Express                       |
 | Database      | MongoDB + Mongoose                     |
 | Auth          | JWT + HTTP-only cookies + bcrypt       |
-| API           | Finnhub API                            |
+| API           | AlphaVantage API                       |
 
 ---
 
@@ -55,7 +55,7 @@ CLIENT_URL=http://localhost:5173
 
 ```env
 REACT_APP_BACKEND_URL=http://localhost:3002
-REACT_APP_API_KEY=your_finnhub_api_key
+REACT_APP_API_KEY=your_alphavantage_api_key
 ```
 
 ---
@@ -65,7 +65,7 @@ REACT_APP_API_KEY=your_finnhub_api_key
 ```env
 REACT_APP_BACKEND_URL=http://localhost:3002
 REACT_APP_DASHBOARD_URL=http://localhost:5174
-REACT_APP_API_KEY=your_finnhub_api_key
+REACT_APP_API_KEY=your_alphavantage_api_key
 ```
 
 > 🔁 Rename `.env.sample` to `.env` and update all placeholder values before running.
