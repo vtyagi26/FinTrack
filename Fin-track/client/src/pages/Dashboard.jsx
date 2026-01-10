@@ -1,16 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, Routes, Route, Link, useLocation } from "react-router-dom";
 import { 
-  LayoutDashboard, 
-  Wallet, 
-  TrendingUp, 
-  ArrowLeftRight, 
-  BarChart3, 
-  MessageSquare, 
-  LogOut,
-  Clock
-} from "lucide-react"; // Using Lucide for cleaner icons
-import TransactionHistory from "../pages/TransactionHistory";
+  LayoutDashboard, Wallet, TrendingUp, ArrowLeftRight, 
+  BarChart3, MessageSquare, LogOut, Clock, Mail, Bell 
+} from "lucide-react";
 
 import Chatbot from "./Chatbot";
 import Invested from "../pages/Invested";
@@ -18,18 +11,21 @@ import Returns from "../pages/Returns";
 import ProfitLoss from "../pages/ProfitLoss";
 import MarketAnalytics from "../pages/MarketAnalytics";
 import BuySell from "../pages/BuySell";
+import TransactionHistory from "../pages/TransactionHistory";
+import MailNotifications from "../pages/MailNotifications"; // New Page
+import Watchlist from "../pages/Watchlist"; // New Page
 
 // --- SIDEBAR COMPONENT ---
-const Sidebar = ({ handleLogout }) => {
+const Sidebar = ({ handleLogout, unreadCount }) => {
   const location = useLocation();
 
   const menuItems = [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
+    { label: "Watchlist", path: "/dashboard/watchlist", icon: <Bell size={20} /> },
     { label: "Invested", path: "/dashboard/invested", icon: <Wallet size={20} /> },
     { label: "Returns", path: "/dashboard/returns", icon: <TrendingUp size={20} /> },
     { label: "Buy / Sell", path: "/dashboard/buy-sell", icon: <ArrowLeftRight size={20} /> },
     { label: "History", path: "/dashboard/history", icon: <Clock size={20} /> },
-    { label: "Market Analytics", path: "/dashboard/market-analytics", icon: <BarChart3 size={20} /> },
     { label: "AI Assistant", path: "/dashboard/chatbot", icon: <MessageSquare size={20} /> },
   ];
 
@@ -62,10 +58,7 @@ const Sidebar = ({ handleLogout }) => {
       </nav>
 
       <div className="p-4 border-t border-gray-700">
-        <button 
-          onClick={handleLogout}
-          className="flex items-center space-x-3 w-full px-4 py-3 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-        >
+        <button onClick={handleLogout} className="flex items-center space-x-3 w-full px-4 py-3 text-red-400 hover:bg-red-900/20 rounded-lg transition-colors">
           <LogOut size={20} />
           <span className="font-medium">Logout</span>
         </button>
@@ -83,87 +76,70 @@ const DashboardHome = () => {
 
   const symbols = ["AAPL", "MSFT", "TSLA"];
   const CACHE_KEY = "stock_cache_v1";
-  const CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
 
   useEffect(() => {
     if (fetchLock.current) return;
     fetchLock.current = true;
 
-    let isMounted = true;
-    const controller = new AbortController();
+    const fetchStockData = async () => {
+      try {
+        setLoading(true);
+        const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
+        const token = localStorage.getItem("token");
+        const currentResults = [];
 
-const fetchStockData = async () => {
-  try {
-    setLoading(true);
-    const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
-    const currentResults = [];
+        for (let i = 0; i < symbols.length; i++) {
+          const symbol = symbols[i];
+          const res = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`);
+          const data = await res.json();
+          const quote = data["Global Quote"];
 
-    for (let i = 0; i < symbols.length; i++) {
-      const symbol = symbols[i];
-      const res = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
-      );
-      
-      const data = await res.json();
-      const quote = data["Global Quote"];
+          if (quote && quote["05. price"]) {
+            const price = parseFloat(quote["05. price"]).toFixed(2);
+            const stockObj = {
+              symbol: quote["01. symbol"],
+              price: price,
+              high: parseFloat(quote["03. high"]).toFixed(2),
+              low: parseFloat(quote["04. low"]).toFixed(2),
+              changePercent: quote["10. change percent"],
+            };
 
-      if (quote && quote["05. price"]) {
-        const stockObj = {
-          symbol: quote["01. symbol"],
-          price: parseFloat(quote["05. price"]).toFixed(2),
-          high: parseFloat(quote["03. high"]).toFixed(2),
-          low: parseFloat(quote["04. low"]).toFixed(2),
-          changePercent: quote["10. change percent"],
-        };
+            currentResults.push(stockObj);
+            setStocks([...currentResults]); 
 
-        currentResults.push(stockObj);
-        
-        // --- THE FIX: Update state AND localStorage immediately ---
-        setStocks([...currentResults]); 
-        localStorage.setItem("stock_cache_v1", JSON.stringify({
-          data: currentResults,
-          timestamp: Date.now()
-        }));
+            // Update Cache immediately for Buy/Sell page
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data: currentResults, timestamp: Date.now() }));
+
+            // --- ALERT ENGINE TRIGGER ---
+            // Send the fresh price to backend to check against user limits
+            fetch("http://localhost:5000/api/alerts/check", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+              body: JSON.stringify({ symbol: stockObj.symbol, price: stockObj.price })
+            }).catch(err => console.error("Alert check failed"));
+          }
+
+          if (i < symbols.length - 1) await new Promise(r => setTimeout(r, 15000));
+        }
+      } catch (err) {
+        setError("Market sync failed.");
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Respect API limits (15s delay)
-      if (i < symbols.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 15000));
-      }
-    }
-  } catch (err) {
-    setError("Sync failed.");
-  } finally {
-    setLoading(false);
-  }
-};
     fetchStockData();
-    return () => { isMounted = false; controller.abort(); };
   }, []);
 
   return (
     <div className="p-8">
-      <header className="mb-8">
-        <h2 className="text-3xl font-bold text-white">Market Overview</h2>
-        <p className="text-gray-400">Real-time insights for your tracked symbols.</p>
+      <header className="mb-8 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-white">Market Overview</h2>
+          <p className="text-gray-400">Real-time data synced with your Watchlist limits.</p>
+        </div>
       </header>
       
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-white">Live Watchlist</h3>
-        {loading && (
-          <div className="flex items-center text-blue-400 text-sm animate-pulse">
-            <div className="h-2 w-2 bg-blue-400 rounded-full mr-2"></div>
-            Syncing Live Data...
-          </div>
-        )}
-      </div>
-
-      {error && !stocks.length && (
-        <div className="bg-red-900/20 border border-red-500/50 text-red-200 p-4 rounded-xl mb-6">
-          {error}
-        </div>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {stocks.map((stock) => (
           <div key={stock.symbol} className="bg-gray-800 border border-gray-700 rounded-2xl p-6 hover:border-blue-500/50 transition-colors shadow-lg">
@@ -172,19 +148,13 @@ const fetchStockData = async () => {
                 <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">{stock.symbol}</span>
                 <p className="text-3xl font-mono text-white mt-1">${stock.price}</p>
               </div>
-              <span className={`px-2 py-1 rounded-lg text-xs font-bold ${parseFloat(stock.change) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+              <span className={`px-2 py-1 rounded-lg text-xs font-bold ${parseFloat(stock.changePercent) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                 {stock.changePercent}
               </span>
             </div>
-            <div className="grid grid-cols-2 pt-4 border-t border-gray-700 gap-4">
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase">Day High</p>
-                <p className="text-white font-medium">${stock.high}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase">Day Low</p>
-                <p className="text-white font-medium">${stock.low}</p>
-              </div>
+            <div className="grid grid-cols-2 pt-4 border-t border-gray-700 gap-4 text-xs">
+              <div><p className="text-gray-500 uppercase">High</p><p className="text-white">${stock.high}</p></div>
+              <div><p className="text-gray-500 uppercase">Low</p><p className="text-white">${stock.low}</p></div>
             </div>
           </div>
         ))}
@@ -196,6 +166,7 @@ const fetchStockData = async () => {
 // --- MAIN LAYOUT WRAPPER ---
 export default function Dashboard() {
   const [user, setUser] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -203,40 +174,56 @@ export default function Dashboard() {
     if (!token) {
       navigate("/signin");
     } else {
-      setUser({ 
-        name: localStorage.getItem("name"), 
-        email: localStorage.getItem("email") 
-      });
+      setUser({ name: localStorage.getItem("name") });
+      fetchNotifications();
     }
   }, [navigate]);
+
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch("http://localhost:5000/api/notifications/unread-count", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setUnreadCount(data.count);
+    } catch (e) { console.error(e); }
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
   };
 
-  if (!user) return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
+  if (!user) return <div className="min-h-screen bg-gray-900 flex items-center justify-center animate-pulse text-blue-500 font-bold">LOADING...</div>;
 
   return (
     <div className="flex min-h-screen bg-gray-900 text-white">
-      {/* Fixed Sidebar */}
       <Sidebar handleLogout={handleLogout} />
 
-      {/* Main Content Area */}
       <main className="flex-1 h-screen overflow-y-auto">
+        {/* Top Header Bar with Mail Icon */}
+        <div className="sticky top-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center px-8">
+           <div className="text-sm font-medium text-gray-400">Welcome back, {user.name}</div>
+           <Link to="/dashboard/notifications" className="relative p-2 bg-gray-800 hover:bg-gray-700 rounded-full transition-all group">
+              <Mail size={20} className="text-gray-400 group-hover:text-blue-400" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-gray-900 font-bold">
+                  {unreadCount}
+                </span>
+              )}
+           </Link>
+        </div>
+
         <Routes>
           <Route index element={<DashboardHome />} />
+          <Route path="watchlist" element={<Watchlist />} />
           <Route path="invested" element={<Invested />} />
           <Route path="returns" element={<Returns />} />
-          <Route path="profit-loss" element={<ProfitLoss />} />
-          <Route path="market-analytics" element={<MarketAnalytics />} />
-          <Route path="chatbot" element={<Chatbot />} />
-          <Route path="buy-sell" element={<BuySell />} />
           <Route path="history" element={<TransactionHistory />} />
+          <Route path="buy-sell" element={<BuySell />} />
+          <Route path="notifications" element={<MailNotifications />} />
+          <Route path="chatbot" element={<Chatbot />} />
         </Routes>
       </main>
     </div>

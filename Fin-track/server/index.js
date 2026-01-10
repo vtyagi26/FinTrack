@@ -11,6 +11,7 @@ import marketRoutes from "./routes/market.js"; //endpoints
 import authRoutes from "./routes/authRoutes.js"; //endpoints
 import tradeRoutes from "./routes/trades.js"; //endpoints
 import userRoutes from "./routes/userRoutes.js";
+import watchlistRoutes from "./routes/watchlist.js"; // Import at top
 
 
 dotenv.config(); // loads env var
@@ -28,6 +29,7 @@ app.use("/api/auth", authRoutes); // routes
 app.use("/api/portfolio", portfolioRoutes); // routes
 app.use("/api/market", marketRoutes); // routes
 app.use("/api/users", userRoutes);
+app.use("/api/watchlist", watchlistRoutes);
 
 app.get("/", (req, res) => res.send("API running...")); // simple test route to confirm server is running
 

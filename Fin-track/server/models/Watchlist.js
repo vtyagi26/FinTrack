@@ -1,4 +1,3 @@
-// models/Watchlist.js
 import mongoose from "mongoose";
 
 const watchlistSchema = new mongoose.Schema({
@@ -8,7 +7,8 @@ const watchlistSchema = new mongoose.Schema({
   lowerLimit: { type: Number },
 }, { timestamps: true });
 
-// Ensure a user can only add a stock once
+// Ensure a user can't add the same stock twice
 watchlistSchema.index({ user: 1, symbol: 1 }, { unique: true });
 
-export default mongoose.model("Watchlist", watchlistSchema);
+const Watchlist = mongoose.model("Watchlist", watchlistSchema);
+export default Watchlist;
