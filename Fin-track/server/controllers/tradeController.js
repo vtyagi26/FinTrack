@@ -22,11 +22,41 @@ export const executeTrade = async (req, res) => {
 
     let holding = await Holding.findOne({ user: userId, symbol: symbol.toUpperCase() });
     let realizedPnLForThisTrade = 0;
+if (type === "buy") {
+      const totalCost = quantity * price;
 
-    if (type === "buy") {
-      // ... your existing Buy logic (updates balance and avgCost) ...
-    } 
-    
+      // 1. Check if user can afford the trade
+      if (user.balance < totalCost) {
+        return res.status(400).json({ message: "Insufficient balance to complete purchase" });
+      }
+
+      // 2. Deduct money from User balance
+      user.balance -= totalCost;
+
+      if (holding) {
+        // 3. Update existing holding using Weighted Average Cost
+        // Formula: (Old Total Cost + New Purchase Cost) / Total Quantity
+        const oldTotalCost = holding.quantity * holding.avgCost;
+        const newTotalQuantity = holding.quantity + Number(quantity);
+        
+        holding.avgCost = (oldTotalCost + totalCost) / newTotalQuantity;
+        holding.quantity = newTotalQuantity;
+        
+        // Update currentPrice (since it's required in your schema)
+        holding.currentPrice = price; 
+
+        await holding.save();
+      } else {
+        // 4. Create a brand new holding
+        await Holding.create({
+          user: userId,
+          symbol: symbol.toUpperCase(),
+          quantity: quantity,
+          avgCost: price,
+          currentPrice: price // Set initial price as current price
+        });
+      }
+    }
     else if (type === "sell") {
       if (!holding || holding.quantity < quantity) {
         return res.status(400).json({ message: "Insufficient shares to sell" });

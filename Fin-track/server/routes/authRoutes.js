@@ -1,5 +1,5 @@
 import express from "express";
-import { signup, signin } from "../controllers/authController.js"; // ✅ fixed names
+import { signup, signin } from "../controllers/authController.js"; //  fixed names
 
 const router = express.Router();
 
