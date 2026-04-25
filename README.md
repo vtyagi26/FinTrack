@@ -1,6 +1,14 @@
 # 💹 FinTrack
 
-**FinTrack** is a full-stack stock trading and portfolio management dashboard. It lets users sign up, log in, view real-time stock prices, place trades, and track their portfolios. The app is built using the MERN stack (MongoDB, Express, React, Node.js) and integrates with the Finnhub API for market data.
+**FinTrack** is a full-stack stock trading and portfolio management dashboard. It lets users sign up, log in, view real-time stock prices, place trades, and track their portfolios. The app is built using the MERN stack (MongoDB, Express, React, Node.js) and integrates with the Alphavantage API for market data.
+Some important features are:
+1. Buy/Sell Engine
+2. AI-Chatbot using OpenAI's API key
+3. Stock Price Prediction using self built ML model.
+
+Deployed Model test link:
+https://stock-analyser-ggjy.onrender.com/predict/MSFT
+Replace MSFT with any Stock ticket you like.
 
 ---
 
