@@ -1,3 +1,5 @@
+import dns from "node:dns";
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
 import express from "express"; // to create backend server and APIS
 import dotenv from "dotenv"; // load env var
 import mongoose from "mongoose"; // define schemas

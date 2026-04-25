@@ -5,6 +5,7 @@ import {
   BarChart3, MessageSquare, LogOut, Clock, Mail, Bell 
 } from "lucide-react";
 
+import StockPrediction from "../pages/Stock_Prediction";
 import Chatbot from "./Chatbot";
 import Invested from "../pages/Invested";
 import Returns from "../pages/Returns";
@@ -27,6 +28,7 @@ const Sidebar = ({ handleLogout, unreadCount }) => {
     { label: "Buy / Sell", path: "/dashboard/buy-sell", icon: <ArrowLeftRight size={20} /> },
     { label: "History", path: "/dashboard/history", icon: <Clock size={20} /> },
     { label: "AI Assistant", path: "/dashboard/chatbot", icon: <MessageSquare size={20} /> },
+    { label: "Prediction Agent", path: "/dashboard/stock_prediction", icon: <MessageSquare size={20} /> },
   ];
 
   return (
@@ -224,6 +226,7 @@ export default function Dashboard() {
           <Route path="buy-sell" element={<BuySell />} />
           <Route path="notifications" element={<MailNotifications />} />
           <Route path="chatbot" element={<Chatbot />} />
+          <Route path="stock_prediction" element={<StockPrediction />} />
         </Routes>
       </main>
     </div>
