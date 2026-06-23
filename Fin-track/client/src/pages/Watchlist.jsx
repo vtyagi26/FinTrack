@@ -17,7 +17,7 @@ export default function Watchlist() {
 
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/watchlist", {
+      const res = await fetch("http://localhost:3002/api/watchlist", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -34,7 +34,7 @@ export default function Watchlist() {
     if (!symbol) return;
 
     try {
-      const res = await fetch("http://localhost:5000/api/watchlist", {
+      const res = await fetch("http://localhost:3002/api/watchlist", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +64,7 @@ export default function Watchlist() {
 
   const removeFromWatchlist = async (id) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/watchlist/${id}`, {
+      const res = await fetch(`http://localhost:3002/api/watchlist/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -18,8 +18,8 @@ const MarketAnalytics = () => {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [snapRes, holdRes] = await Promise.all([
-          fetch("http://localhost:5000/api/portfolio/snapshots?range=30d", { headers }),
-          fetch("http://localhost:5000/api/portfolio/holdings", { headers })
+          fetch("http://localhost:3002/api/portfolio/snapshots?range=30d", { headers }),
+          fetch("http://localhost:3002/api/portfolio/holdings", { headers })
         ]);
 
         const snapData = await snapRes.json();

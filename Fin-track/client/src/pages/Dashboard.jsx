@@ -15,6 +15,7 @@ import BuySell from "../pages/BuySell";
 import TransactionHistory from "../pages/TransactionHistory";
 import MailNotifications from "../pages/MailNotifications"; // New Page
 import Watchlist from "../pages/Watchlist"; // New Page
+import QuantOptimizer from "../pages/QuantOptimizer";
 
 // --- SIDEBAR COMPONENT ---
 const Sidebar = ({ handleLogout, unreadCount }) => {
@@ -29,6 +30,7 @@ const Sidebar = ({ handleLogout, unreadCount }) => {
     { label: "History", path: "/dashboard/history", icon: <Clock size={20} /> },
     { label: "AI Assistant", path: "/dashboard/chatbot", icon: <MessageSquare size={20} /> },
     { label: "Prediction Agent", path: "/dashboard/stock_prediction", icon: <MessageSquare size={20} /> },
+    { label: "Quant Optimizer", path: "/dashboard/quant", icon: <BarChart3 size={20} /> },
   ];
 
   return (
@@ -114,7 +116,7 @@ const DashboardHome = () => {
 
             // --- ALERT ENGINE TRIGGER ---
             // Send the fresh price to backend to check against user limits
-            fetch("http://localhost:5000/api/alerts/check", {
+            fetch("http://localhost:3002/api/alerts/check", {
               method: "POST",
               headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
               body: JSON.stringify({ symbol: stockObj.symbol, price: stockObj.price })
@@ -169,7 +171,25 @@ const DashboardHome = () => {
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const navigate = useNavigate();
+  const navigate = useNavigate();1
+
+   const holdings = [
+    {
+      ticker: "AAPL",
+      quantity: 10,
+      currentPrice: 180
+    },
+    {
+      ticker: "MSFT",
+      quantity: 5,
+      currentPrice: 420
+    },
+    {
+      ticker: "NVDA",
+      quantity: 2,
+      currentPrice: 900
+    }
+  ];
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -181,17 +201,27 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
-  const fetchNotifications = async () => {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("http://localhost:5000/api/notifications/unread-count", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setUnreadCount(data.count);
-    } catch (e) { console.error(e); }
-  };
+const fetchNotifications = async () => {
+  const token = localStorage.getItem("token");
 
+  try {
+    const res = await fetch("http://localhost:3002/api/notifications/unread-count", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) {
+      console.warn("Notifications route not found. Using unread count = 0");
+      setUnreadCount(0);
+      return;
+    }
+
+    const data = await res.json();
+    setUnreadCount(data.count || 0);
+  } catch (e) {
+    console.error("Failed to fetch notifications:", e);
+    setUnreadCount(0);
+  }
+};
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
@@ -227,6 +257,7 @@ export default function Dashboard() {
           <Route path="notifications" element={<MailNotifications />} />
           <Route path="chatbot" element={<Chatbot />} />
           <Route path="stock_prediction" element={<StockPrediction />} />
+          <Route path="quant" element={<QuantOptimizer holdings={holdings} />} />
         </Routes>
       </main>
     </div>

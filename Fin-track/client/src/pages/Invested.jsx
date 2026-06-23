@@ -15,8 +15,8 @@ export default function Invested() {
 
         // 1. Fetch current holdings and trade history simultaneously
         const [holdingsRes, historyRes] = await Promise.all([
-          fetch("http://localhost:5000/api/portfolio/holdings", { headers }),
-          fetch("http://localhost:5000/api/trades/history", { headers })
+          fetch("http://localhost:3002/api/portfolio/holdings", { headers }),
+          fetch("http://localhost:3002/api/trades/history", { headers })
         ]);
 
         const dbHoldings = await holdingsRes.json();

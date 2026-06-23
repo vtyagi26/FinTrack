@@ -6,14 +6,14 @@ export default function MailNotifications() {
   useEffect(() => {
     const fetchMails = async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:5000/api/notifications", {
+      const res = await fetch("http://localhost:3002/api/notifications", {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       setNotifications(data);
       
       // Mark as read after viewing
-      fetch("http://localhost:5000/api/notifications/read", {
+      fetch("http://localhost:3002/api/notifications/read", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });

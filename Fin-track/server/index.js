@@ -14,7 +14,8 @@ import authRoutes from "./routes/authRoutes.js"; //endpoints
 import tradeRoutes from "./routes/trades.js"; //endpoints
 import userRoutes from "./routes/userRoutes.js";
 import watchlistRoutes from "./routes/watchlist.js"; // Import at top
-
+import quantRoutes from "./routes/quantRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config(); // loads env var
 
@@ -26,16 +27,18 @@ app.use(cors({ origin: "http://localhost:5173", credentials: true })); // allows
 app.use(helmet()); // secure http headers
 app.use(morgan("dev")); // logs incoming req in readable format
 
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/trades", tradeRoutes); // routes
 app.use("/api/auth", authRoutes); // routes
 app.use("/api/portfolio", portfolioRoutes); // routes
 app.use("/api/market", marketRoutes); // routes
 app.use("/api/users", userRoutes);
 app.use("/api/watchlist", watchlistRoutes);
+app.use("/quant", quantRoutes);
 
 app.get("/", (req, res) => res.send("API running...")); // simple test route to confirm server is running
 
-const PORT = process.env.PORT || 5000; // uses the port from .env or default 5000
+const PORT = process.env.PORT || 3002; // uses the port from .env or default 5000
 
 mongoose
   .connect(process.env.MONGO_URI) // connects mongodb using connection string in env

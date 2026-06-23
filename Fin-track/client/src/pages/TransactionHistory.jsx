@@ -9,7 +9,7 @@ export default function TransactionHistory() {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/trades/history", {
+        const res = await fetch("http://localhost:3002/api/trades/history", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

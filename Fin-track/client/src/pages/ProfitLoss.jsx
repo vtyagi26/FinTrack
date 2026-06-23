@@ -8,7 +8,7 @@ const ProfitLoss = () => {
     const fetchPLData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:5000/api/portfolio/holdings", {
+        const res = await fetch("http://localhost:3002/api/portfolio/holdings", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();

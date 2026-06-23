@@ -7,6 +7,7 @@ import SignIn from "./pages/Signin";
 import SignUp from "./pages/Signup";
 import MainLayout from "./layouts/mainlayout";
 import Dashboard from "./pages/Dashboard";
+import QuantOptimizer from "./pages/QuantOptimizer";
 
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -53,6 +54,7 @@ function App() {
           path="/dashboard/*"
           element={<Dashboard />}
         />
+
       </Routes>
     </Router>
   );
