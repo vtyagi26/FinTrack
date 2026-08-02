@@ -112,42 +112,23 @@ const DashboardHome = () => {
     const fetchStockData = async () => {
       try {
         setLoading(true);
-
-        const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY;
         const token = localStorage.getItem("token");
 
-        const currentResults = [];
+        const res = await fetch(`${API_BASE_URL}/api/market/quotes`);
+        const data = await res.json();
 
-        for (let i = 0; i < symbols.length; i++) {
-          const symbol = symbols[i];
-
-          const res = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
+        if (Array.isArray(data) && data.length > 0) {
+          setStocks(data);
+          localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify({
+              data,
+              timestamp: Date.now(),
+            })
           );
 
-          const data = await res.json();
-          const quote = data["Global Quote"];
-
-          if (quote && quote["05. price"]) {
-            const stockObj = {
-              symbol: quote["01. symbol"],
-              price: parseFloat(quote["05. price"]).toFixed(2),
-              high: parseFloat(quote["03. high"]).toFixed(2),
-              low: parseFloat(quote["04. low"]).toFixed(2),
-              changePercent: quote["10. change percent"],
-            };
-
-            currentResults.push(stockObj);
-            setStocks([...currentResults]);
-
-            localStorage.setItem(
-              CACHE_KEY,
-              JSON.stringify({
-                data: currentResults,
-                timestamp: Date.now(),
-              })
-            );
-
+          // Check price alerts for fetched stocks
+          data.forEach((stockObj) => {
             fetch(`${API_BASE_URL}/api/alerts/check`, {
               method: "POST",
               headers: {
@@ -159,14 +140,10 @@ const DashboardHome = () => {
                 price: stockObj.price,
               }),
             }).catch(console.error);
-          }
-
-          if (i < symbols.length - 1) {
-            await new Promise((r) => setTimeout(r, 15000));
-          }
+          });
         }
       } catch (err) {
-        console.error(err);
+        console.error("Market quotes fetch error:", err);
         setError("Market sync failed.");
       } finally {
         setLoading(false);

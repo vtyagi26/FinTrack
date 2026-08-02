@@ -1,4 +1,14 @@
 import axios from "axios";
+import { getBatchQuotesFromCache } from "../services/marketCache.js";
+
+export const getBatchQuotes = async (req, res) => {
+  try {
+    const quotes = await getBatchQuotesFromCache();
+    res.json(quotes);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching market quotes", error: err.message });
+  }
+};
 
 export const getQuote = async (req, res) => {
   const { symbol } = req.query;
