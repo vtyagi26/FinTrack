@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Bell, TrendingUp, TrendingDown, Search } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 export default function Watchlist() {
   const [watchlist, setWatchlist] = useState([]);
@@ -17,7 +18,7 @@ export default function Watchlist() {
 
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch("http://localhost:3002/api/watchlist", {
+      const res = await fetch(`${API_BASE_URL}/api/watchlist`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -34,7 +35,7 @@ export default function Watchlist() {
     if (!symbol) return;
 
     try {
-      const res = await fetch("http://localhost:3002/api/watchlist", {
+      const res = await fetch(`${API_BASE_URL}/api/watchlist`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,7 +65,7 @@ export default function Watchlist() {
 
   const removeFromWatchlist = async (id) => {
     try {
-      const res = await fetch(`http://localhost:3002/api/watchlist/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/watchlist/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

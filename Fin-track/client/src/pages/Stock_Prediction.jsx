@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PREDICTION_SERVICE_URL } from "../config/api";
 import {
   TrendingUp,
   TrendingDown,
@@ -25,7 +26,7 @@ export default function StockPrediction() {
 
     try {
       const res = await fetch(
-        `https://stock-analyser-ggjy.onrender.com/predict/${ticker}`
+        `${PREDICTION_SERVICE_URL}/predict/${ticker}`
       );
 
       if (!res.ok) {
@@ -67,7 +68,7 @@ export default function StockPrediction() {
           >
             <input
               type="text"
-              placeholder="Enter stock ticker (e.g. AAPL, TSLA, NVDA)"
+              placeholder="Enter stock ticker (e.g. AAPL, TSLA, MSFT)"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
               className="flex-1 h-14 px-5 rounded-2xl bg-gray-900 border border-gray-700 text-white placeholder:text-gray-500 text-lg outline-none focus:border-green-500"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../config/api";
 
 export default function MailNotifications() {
   const [notifications, setNotifications] = useState([]);
@@ -6,14 +7,14 @@ export default function MailNotifications() {
   useEffect(() => {
     const fetchMails = async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:3002/api/notifications", {
+      const res = await fetch(`${API_BASE_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
       setNotifications(data);
       
       // Mark as read after viewing
-      fetch("http://localhost:3002/api/notifications/read", {
+      fetch(`${API_BASE_URL}/api/notifications/read`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` }
       });

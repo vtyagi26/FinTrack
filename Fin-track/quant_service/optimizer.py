@@ -66,6 +66,7 @@ def optimize_portfolio(returns: pd.DataFrame, risk_free_rate: float):
         raise ValueError("Portfolio optimization failed.")
 
     optimal_weights = result.x
+    
 
     return {
         "tickers": tickers,

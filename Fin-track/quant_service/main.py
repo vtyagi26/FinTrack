@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List
-
+    
 from optimizer import (
     prepare_returns,
     optimize_portfolio,
@@ -12,12 +12,16 @@ from optimizer import (
 )
 
 
+import os
+
 app = FastAPI(title="FinTrack Quant Service")
 
+allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "*")
+allowed_origins = [o.strip() for o in allowed_origins_raw.split(",")] if allowed_origins_raw != "*" else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5174", "http://localhost:5173"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

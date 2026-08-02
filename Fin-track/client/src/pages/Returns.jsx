@@ -3,6 +3,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend, AreaChart, Area, Label 
 } from "recharts";
+import { API_BASE_URL } from "../config/api";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
@@ -18,8 +19,8 @@ const MarketAnalytics = () => {
         const headers = { Authorization: `Bearer ${token}` };
 
         const [snapRes, holdRes] = await Promise.all([
-          fetch("http://localhost:3002/api/portfolio/snapshots?range=30d", { headers }),
-          fetch("http://localhost:3002/api/portfolio/holdings", { headers })
+          fetch(`${API_BASE_URL}/api/portfolio/snapshots?range=30d`, { headers }),
+          fetch(`${API_BASE_URL}/api/portfolio/holdings`, { headers })
         ]);
 
         const snapData = await snapRes.json();

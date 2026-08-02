@@ -23,7 +23,22 @@ const app = express(); // initializes express applications
 
 app.use(express.json()); // allows server to parse json req bodies
 app.use(cookieParser()); // parses cookies and makes them available as req.cookies
-app.use(cors({ origin: "http://localhost:5173", credentials: true })); // allows req from frontend and credentials allow cookies and authentication headers
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
+  : ["http://localhost:5173", "http://localhost:5174"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(helmet()); // secure http headers
 app.use(morgan("dev")); // logs incoming req in readable format
 

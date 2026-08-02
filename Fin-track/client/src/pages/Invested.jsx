@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, Wallet, Banknote, BarChart2 } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 export default function Invested() {
   const [holdings, setHoldings] = useState([]);
@@ -15,8 +16,8 @@ export default function Invested() {
 
         // 1. Fetch current holdings and trade history simultaneously
         const [holdingsRes, historyRes] = await Promise.all([
-          fetch("http://localhost:3002/api/portfolio/holdings", { headers }),
-          fetch("http://localhost:3002/api/trades/history", { headers })
+          fetch(`${API_BASE_URL}/api/portfolio/holdings`, { headers }),
+          fetch(`${API_BASE_URL}/api/trades/history`, { headers })
         ]);
 
         const dbHoldings = await holdingsRes.json();

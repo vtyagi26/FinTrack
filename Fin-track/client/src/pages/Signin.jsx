@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ const SignIn = () => {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:3002/api/auth/signin", {
+      const res = await fetch(`${API_BASE_URL}/api/auth/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

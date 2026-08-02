@@ -1,99 +1,185 @@
-// controllers/tradeController.js
 import Holding from "../models/Holding.js";
 import User from "../models/User.js";
 import Trade from "../models/Trade.js";
 
 export const getTradeHistory = async (req, res) => {
   try {
-    // Find all trades for the logged-in user, sorted by newest first
-    const trades = await Trade.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const trades = await Trade.find({ userId: req.user._id }).sort({
+      createdAt: -1,
+    });
+
     res.status(200).json(trades);
   } catch (err) {
-    res.status(500).json({ message: "Error fetching trade history", error: err.message });
+    console.error("GET TRADE HISTORY ERROR:", err);
+
+    res.status(500).json({
+      message: "Error fetching trade history",
+      error: err.message,
+    });
   }
 };
 
-// controllers/tradeController.js
 export const executeTrade = async (req, res) => {
   try {
     const { symbol, quantity, price, type } = req.body;
+
+    console.log("\n================= NEW TRADE =================");
+    console.log("BODY:", req.body);
+
     const userId = req.user._id;
+
+    console.log("\n========== AUTH USER ==========");
+    console.log(req.user);
+
     const user = await User.findById(userId);
 
-    let holding = await Holding.findOne({ user: userId, symbol: symbol.toUpperCase() });
-    let realizedPnLForThisTrade = 0;
-if (type === "buy") {
-      const totalCost = quantity * price;
+    console.log("\n========== USER FROM DB ==========");
+    console.log(user);
 
-      // 1. Check if user can afford the trade
+    if (user) {
+      console.log(user.toObject());
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    let holding = await Holding.findOne({
+      user: userId,
+      symbol: symbol.toUpperCase(),
+    });
+
+    console.log("\n========== HOLDING ==========");
+    console.log(holding);
+
+    let realizedPnLForThisTrade = 0;
+
+    if (type === "buy") {
+      const totalCost = Number(quantity) * Number(price);
+
+      console.log("\n========== BUY ==========");
+      console.log({
+        balance: user.balance,
+        totalCost,
+      });
+
       if (user.balance < totalCost) {
-        return res.status(400).json({ message: "Insufficient balance to complete purchase" });
+        return res.status(400).json({
+          message: "Insufficient balance to complete purchase",
+        });
       }
 
-      // 2. Deduct money from User balance
       user.balance -= totalCost;
 
       if (holding) {
-        // 3. Update existing holding using Weighted Average Cost
-        // Formula: (Old Total Cost + New Purchase Cost) / Total Quantity
         const oldTotalCost = holding.quantity * holding.avgCost;
         const newTotalQuantity = holding.quantity + Number(quantity);
-        
-        holding.avgCost = (oldTotalCost + totalCost) / newTotalQuantity;
+
+        holding.avgCost =
+          (oldTotalCost + totalCost) / newTotalQuantity;
+
         holding.quantity = newTotalQuantity;
-        
-        // Update currentPrice (since it's required in your schema)
-        holding.currentPrice = price; 
+        holding.currentPrice = Number(price);
+
+        console.log("\nUpdating Holding...");
+        console.log(holding.toObject());
 
         await holding.save();
+
+        console.log("Holding updated.");
       } else {
-        // 4. Create a brand new holding
-        await Holding.create({
+        console.log("\nCreating Holding...");
+
+        const newHolding = await Holding.create({
           user: userId,
           symbol: symbol.toUpperCase(),
-          quantity: quantity,
-          avgCost: price,
-          currentPrice: price // Set initial price as current price
+          quantity: Number(quantity),
+          avgCost: Number(price),
+          currentPrice: Number(price),
         });
+
+        console.log(newHolding);
       }
     }
+
     else if (type === "sell") {
+
+      console.log("\n========== SELL ==========");
+
       if (!holding || holding.quantity < quantity) {
-        return res.status(400).json({ message: "Insufficient shares to sell" });
+        return res.status(400).json({
+          message: "Insufficient shares to sell",
+        });
       }
 
-      // --- CALCULATE REALIZED P/L ---
-      // Realized P/L = (Current Sell Price - The price you paid on average) * Quantity
-      realizedPnLForThisTrade = (price - holding.avgCost) * quantity;
+      realizedPnLForThisTrade =
+        (Number(price) - holding.avgCost) * Number(quantity);
 
-      user.balance += (quantity * price);
-      holding.quantity -= quantity;
+      user.balance += Number(quantity) * Number(price);
+
+      holding.quantity -= Number(quantity);
 
       if (holding.quantity === 0) {
+        console.log("Deleting holding...");
         await holding.deleteOne();
       } else {
+        console.log("Updating holding...");
         await holding.save();
       }
     }
 
-    // Save the trade to history with the calculated Realized P/L
-    await Trade.create({
+    console.log("\n========== CREATING TRADE ==========");
+
+    console.log({
       userId,
-      symbol: symbol.toUpperCase(),
+      symbol,
       quantity,
       price,
       type,
-      realizedPnL: realizedPnLForThisTrade // Store this for the History page
+      realizedPnL: realizedPnLForThisTrade,
     });
 
-    await user.save();
+    const trade = await Trade.create({
+      userId,
+      symbol: symbol.toUpperCase(),
+      quantity: Number(quantity),
+      price: Number(price),
+      type,
+      realizedPnL: realizedPnLForThisTrade,
+    });
 
-    res.status(200).json({ 
-      message: "Trade successful", 
+    console.log(trade);
+
+console.log("USER BEFORE SAVE:");
+console.log(user.toObject());
+
+    //await user.save();
+
+    console.log("User saved successfully.");
+
+    console.log("================= TRADE COMPLETE =================\n");
+
+    res.status(200).json({
+      message: "Trade successful",
       userBalance: user.balance,
-      realizedPnL: realizedPnLForThisTrade 
+      realizedPnL: realizedPnLForThisTrade,
     });
+
   } catch (err) {
-    res.status(500).json({ message: "Trade failed", error: err.message });
+
+    console.log("\n================= TRADE ERROR =================");
+
+    console.error(err);
+
+    console.error(err.stack);
+
+    console.log("===============================================\n");
+
+    res.status(500).json({
+      message: "Trade failed",
+      error: err.message,
+    });
   }
 };

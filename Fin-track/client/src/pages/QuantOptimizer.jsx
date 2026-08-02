@@ -15,7 +15,9 @@ import {
   Bar
 } from "recharts";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
+import { API_BASE_URL } from "../config/api";
+
+const BACKEND_URL = API_BASE_URL;
 
 const COLORS = ["#3b82f6", "#22c55e", "#f97316", "#a855f7", "#ef4444", "#14b8a6"];
 
@@ -25,6 +27,10 @@ export default function QuantOptimizer({ holdings = [] }) {
   const [errorMessage, setErrorMessage] = useState("");
 
   const runOptimization = async () => {
+
+    console.log("Holdings received:");
+    console.table(holdings);
+
     try {
       setLoading(true);
       setErrorMessage("");
@@ -48,7 +54,7 @@ export default function QuantOptimizer({ holdings = [] }) {
       });
 
       const data = await response.json();
-
+      
       if (!response.ok) {
         console.error("Backend quant error:", data);
         throw new Error(

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 
 export default function BuySell() {
   const [stocks, setStocks] = useState([]);
@@ -20,10 +21,10 @@ export default function BuySell() {
 
         // 1. Fetch User Profile & Holdings from MongoDB
         const [userRes, holdingsRes] = await Promise.all([
-          fetch("http://localhost:3002/api/users/profile", { 
+          fetch(`${API_BASE_URL}/api/users/profile`, { 
             headers: { Authorization: `Bearer ${token}` } 
           }),
-          fetch("http://localhost:3002/api/portfolio/holdings", { 
+          fetch(`${API_BASE_URL}/api/portfolio/holdings`, { 
             headers: { Authorization: `Bearer ${token}` } 
           })
         ]);
@@ -87,7 +88,7 @@ export default function BuySell() {
 
     try {
       setMessage({ text: "Executing Trade on MongoDB...", type: "info" });
-      const res = await fetch("http://localhost:3002/api/trades", {
+      const res = await fetch(`${API_BASE_URL}/api/trades`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ symbol, quantity: Number(quantity), price: currentPrice, type }),
@@ -101,7 +102,7 @@ export default function BuySell() {
       setMessage({ text: `Successfully ${type} ${quantity} shares of ${symbol}`, type: "success" });
 
       // Refresh Holdings
-      const hRes = await fetch("http://localhost:3002/api/portfolio/holdings", {
+      const hRes = await fetch(`${API_BASE_URL}/api/portfolio/holdings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUserHoldings(await hRes.json());

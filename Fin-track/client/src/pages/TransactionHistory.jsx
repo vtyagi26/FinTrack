@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ArrowUpRight, ArrowDownLeft, Clock } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 export default function TransactionHistory() {
   const [trades, setTrades] = useState([]);
@@ -9,7 +10,7 @@ export default function TransactionHistory() {
     const fetchHistory = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("http://localhost:3002/api/trades/history", {
+        const res = await fetch(`${API_BASE_URL}/api/trades/history`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
