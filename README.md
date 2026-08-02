@@ -1,5 +1,8 @@
 # FinTrack — Full-Stack Stock Trading, Portfolio Management & Quant Optimization Platform
 
+Check out the deployed version! 
+https://fin-trackclient.vercel.app/
+
 FinTrack is a full-stack stock trading and portfolio management dashboard built with the MERN stack. It allows users to sign up, log in, view real-time stock prices, place buy/sell trades, manage watchlists, track portfolio holdings, analyze returns, use an AI-powered finance chatbot, run stock price prediction, and perform quantitative portfolio optimization.
 
 The platform has been extended with a Python-based **Quant Portfolio Optimizer Microservice** that applies financial engineering concepts such as Markowitz mean-variance optimization, Sharpe ratio maximization, current-vs-optimal portfolio comparison, rebalancing suggestions, and Monte Carlo simulations.
