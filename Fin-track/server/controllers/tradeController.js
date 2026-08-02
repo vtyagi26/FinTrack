@@ -155,8 +155,7 @@ export const executeTrade = async (req, res) => {
 console.log("USER BEFORE SAVE:");
 console.log(user.toObject());
 
-    //await user.save();
-
+    await user.save();
     console.log("User saved successfully.");
 
     console.log("================= TRADE COMPLETE =================\n");
