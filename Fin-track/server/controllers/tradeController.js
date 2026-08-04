@@ -159,8 +159,8 @@ export const executeTrade = async (req, res) => {
 console.log("USER BEFORE SAVE:");
 console.log(user.toObject());
 
-    await user.save();
-    console.log("User saved successfully.");
+    await User.findByIdAndUpdate(userId, { balance: user.balance });
+    console.log("User balance saved successfully to MongoDB:", user.balance);
 
     console.log("================= TRADE COMPLETE =================\n");
 
