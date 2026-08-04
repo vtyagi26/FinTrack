@@ -11,7 +11,7 @@ router.get("/profile", protect, async (req, res) => {
     let user = await User.findById(req.user._id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (typeof user.balance !== "number" || isNaN(user.balance)) {
+    if (typeof user.balance !== "number" || isNaN(user.balance) || user.balance === 10000) {
       await User.findByIdAndUpdate(req.user._id, { balance: 5000 });
       user.balance = 5000;
     }

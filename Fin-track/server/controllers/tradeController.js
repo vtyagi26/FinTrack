@@ -46,7 +46,7 @@ export const executeTrade = async (req, res) => {
       });
     }
 
-    if (typeof user.balance !== "number" || isNaN(user.balance)) {
+    if (typeof user.balance !== "number" || isNaN(user.balance) || user.balance === 10000) {
       user.balance = 5000;
     }
 
