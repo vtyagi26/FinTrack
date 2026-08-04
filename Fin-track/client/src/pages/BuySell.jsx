@@ -37,9 +37,14 @@ export default function BuySell() {
         const perfData = await perfRes.json();
         setHasPortfolio(!!perfData.hasPortfolio);
         setPerformanceData(perfData.performance || []);
+      } else {
+        setHasPortfolio(false);
+        setPerformanceData([]);
       }
     } catch (err) {
       console.error("Error fetching 7d performance:", err);
+      setHasPortfolio(false);
+      setPerformanceData([]);
     }
   };
 
