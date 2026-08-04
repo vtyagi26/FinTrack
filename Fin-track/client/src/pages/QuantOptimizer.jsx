@@ -57,11 +57,28 @@ export default function QuantOptimizer({ holdings = [] }) {
       
       if (!response.ok) {
         console.error("Backend quant error:", data);
-        throw new Error(
-          typeof data.error === "string"
-            ? data.error
-            : data.error?.detail || data.message || "Optimization failed"
-        );
+        let rawErrorStr = "";
+        if (typeof data.error === "string") {
+          rawErrorStr = data.error;
+        } else if (typeof data.error === "object") {
+          rawErrorStr = JSON.stringify(data.error);
+        } else if (typeof data.message === "string") {
+          rawErrorStr = data.message;
+        }
+
+        let errMsg = "Optimization failed. Please try again.";
+
+        if (rawErrorStr.includes("<html") || rawErrorStr.includes("<!DOCTYPE") || rawErrorStr.includes("Bad Gateway") || rawErrorStr.includes("502")) {
+          errMsg = "The Quant Optimization microservice is currently unavailable (502 Bad Gateway). If hosted on Render, it may be waking up from sleep mode. Please try again in 30 seconds.";
+        } else if (typeof data.error === "string" && data.error) {
+          errMsg = data.error;
+        } else if (data.error?.detail) {
+          errMsg = data.error.detail;
+        } else if (data.message) {
+          errMsg = data.message;
+        }
+
+        throw new Error(errMsg);
       }
 
       setResult(data);
