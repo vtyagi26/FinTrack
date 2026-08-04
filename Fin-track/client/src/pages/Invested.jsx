@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { TrendingUp, Wallet, Banknote, BarChart2 } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from "recharts";
 import { API_BASE_URL } from "../config/api";
+
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
 export default function Invested() {
   const [holdings, setHoldings] = useState([]);
@@ -24,12 +27,11 @@ export default function Invested() {
         const tradeHistory = await historyRes.json();
 
         // 2. Calculate Realized P/L from history
-        // Summing the 'realizedPnL' field from every 'sell' transaction
-        const totalRealized = tradeHistory.reduce((sum, trade) => {
+        const totalRealized = Array.isArray(tradeHistory) ? tradeHistory.reduce((sum, trade) => {
           return sum + (Number(trade.realizedPnL) || 0);
-        }, 0);
+        }, 0) : 0;
 
-        setHoldings(dbHoldings);
+        setHoldings(Array.isArray(dbHoldings) ? dbHoldings : []);
         setRealizedPnL(totalRealized);
 
         // 3. Get Live Prices from Dashboard Cache
@@ -37,7 +39,9 @@ export default function Invested() {
         if (cachedData) {
           const { data } = JSON.parse(cachedData);
           const priceMap = {};
-          data.forEach(s => priceMap[s.symbol] = parseFloat(s.price));
+          if (Array.isArray(data)) {
+            data.forEach(s => priceMap[s.symbol] = parseFloat(s.price));
+          }
           setLivePrices(priceMap);
         }
       } catch (err) {
@@ -50,13 +54,23 @@ export default function Invested() {
     fetchPortfolioData();
   }, []);
 
-  // --- CALCULATIONS FOR SUMMARY ---
+  // --- CALCULATIONS FOR SUMMARY & ALLOCATION ---
   const totalInvested = holdings.reduce((sum, h) => sum + (h.avgCost * h.quantity), 0);
   const currentTotalValue = holdings.reduce((sum, h) => {
     const livePrice = livePrices[h.symbol] || h.avgCost;
     return sum + (livePrice * h.quantity);
   }, 0);
   const unrealizedPnL = currentTotalValue - totalInvested;
+
+  const pieData = holdings
+    .map((h) => {
+      const price = livePrices[h.symbol] || h.avgCost || 0;
+      const val = Number(h.quantity) * price;
+      return { name: h.symbol, value: parseFloat(val.toFixed(2)) };
+    })
+    .filter((item) => item.value > 0);
+
+  const totalStockVal = pieData.reduce((sum, item) => sum + item.value, 0);
 
   if (loading) return (
     <div className="p-10 text-center text-white animate-pulse">
@@ -68,7 +82,7 @@ export default function Invested() {
     <div className="p-8 text-white max-w-7xl mx-auto">
       <header className="mb-8">
         <h2 className="text-3xl font-bold">Invested Assets</h2>
-        <p className="text-gray-400">Manage your active positions and track performance.</p>
+        <p className="text-gray-400">Manage active positions, view asset allocation, and track performance.</p>
       </header>
 
       {/* --- SUMMARY CARDS --- */}
@@ -107,6 +121,78 @@ export default function Invested() {
           <p className={`text-2xl font-mono font-bold ${realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {realizedPnL >= 0 ? '+' : ''}${realizedPnL.toFixed(2)}
           </p>
+        </div>
+      </div>
+
+      {/* --- ASSET ALLOCATION (STOCK %) GRAPH SECTION --- */}
+      <div className="bg-gray-800 border border-gray-700 p-6 rounded-3xl shadow-xl mb-10">
+        <h3 className="text-xl font-bold mb-6 text-gray-200">Asset Allocation (% Portfolio Share)</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          {/* Donut Chart */}
+          <div className="h-[280px] w-full">
+            <ResponsiveContainer width="99%" height="100%">
+              {pieData.length > 0 ? (
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={70}
+                    outerRadius={95}
+                    paddingAngle={5}
+                    dataKey="value"
+                    isAnimationActive={true}
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                    <Label
+                      content={({ viewBox }) => {
+                        const { cx, cy } = viewBox;
+                        return (
+                          <text x={cx} y={cy} fill="white" textAnchor="middle" dominantBaseline="central">
+                            <tspan x={cx} y={cy - 10} fontSize="12" fill="#9ca3af" fontWeight="bold">STOCKS</tspan>
+                            <tspan x={cx} y={cy + 14} fontSize="18" fontWeight="bold" fill="#3b82f6">
+                              ${totalStockVal > 1000 ? (totalStockVal / 1000).toFixed(1) + 'k' : totalStockVal.toFixed(2)}
+                            </tspan>
+                          </text>
+                        );
+                      }}
+                    />
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '12px', color: '#fff' }}
+                    formatter={(value) => [`$${Number(value).toFixed(2)}`, "Value"]}
+                  />
+                </PieChart>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500 italic">No active stock positions held.</div>
+              )}
+            </ResponsiveContainer>
+          </div>
+
+          {/* Breakdown List */}
+          <div className="space-y-4">
+            <p className="text-xs text-gray-400 uppercase tracking-widest font-bold mb-4">Stock Allocation Breakdown</p>
+            {pieData.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">No holdings to display.</p>
+            ) : (
+              pieData.map((item, i) => {
+                const pct = totalStockVal > 0 ? ((item.value / totalStockVal) * 100).toFixed(1) : 0;
+                return (
+                  <div key={item.name} className="flex justify-between items-center bg-gray-900/40 p-3 rounded-xl border border-gray-700/50">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                      <span className="font-bold text-sm text-white">{item.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono text-white text-sm font-bold">${item.value.toFixed(2)}</span>
+                      <span className="font-mono text-blue-400 text-xs ml-3 bg-blue-900/30 px-2 py-0.5 rounded border border-blue-500/30 font-bold">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 

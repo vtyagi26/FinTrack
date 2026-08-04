@@ -24,7 +24,6 @@ import {
 import StockPrediction from "../pages/Stock_Prediction";
 import Chatbot from "./Chatbot";
 import Invested from "../pages/Invested";
-import Returns from "../pages/Returns";
 import BuySell from "../pages/BuySell";
 import TransactionHistory from "../pages/TransactionHistory";
 import MailNotifications from "../pages/MailNotifications";
@@ -40,7 +39,6 @@ const Sidebar = ({ handleLogout }) => {
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Watchlist", path: "/dashboard/watchlist", icon: <Bell size={20} /> },
     { label: "Invested", path: "/dashboard/invested", icon: <Wallet size={20} /> },
-    { label: "Returns", path: "/dashboard/returns", icon: <TrendingUp size={20} /> },
     { label: "Buy / Sell", path: "/dashboard/buy-sell", icon: <ArrowLeftRight size={20} /> },
     { label: "History", path: "/dashboard/history", icon: <Clock size={20} /> },
     { label: "AI Assistant", path: "/dashboard/chatbot", icon: <MessageSquare size={20} /> },
@@ -388,11 +386,6 @@ console.table(holdings);
           <Route
             path="invested"
             element={<Invested />}
-          />
-
-          <Route
-            path="returns"
-            element={<Returns />}
           />
 
           <Route

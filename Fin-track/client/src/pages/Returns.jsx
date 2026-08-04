@@ -62,6 +62,7 @@ const MarketAnalytics = () => {
     .filter(item => item.value > 0);
 
   const totalStockValue = pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalPortfolioValue = totalStockValue;
   const currentNetWorth = userBalance + totalStockValue;
 
   const startVal = snapshots.length > 0 ? snapshots[0].value : 5000;
