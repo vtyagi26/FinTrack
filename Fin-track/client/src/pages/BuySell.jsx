@@ -155,6 +155,25 @@ export default function BuySell() {
   const change7dPct = startVal > 0 ? (change7d / startVal) * 100 : 0;
   const isPositive7d = change7d >= 0;
 
+  const handleResetBalance = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/reset-balance`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBalance(data.balance);
+        setMessage({ text: "Budget successfully reset to $5,000.00", type: "success" });
+        await fetchPerformance();
+      } else {
+        setMessage({ text: data.message || "Failed to reset budget", type: "error" });
+      }
+    } catch (err) {
+      setMessage({ text: "Error resetting budget", type: "error" });
+    }
+  };
+
   if (loading) return <div className="p-10 text-center text-white">Connecting to Financial Database...</div>;
 
   return (
@@ -165,11 +184,18 @@ export default function BuySell() {
           <h2 className="text-3xl font-bold tracking-tight">TRADE CENTER</h2>
           <p className="text-gray-400">Master List Trading & Portfolio Tracking</p>
         </div>
-        <div className="bg-blue-600/20 border border-blue-500/50 p-4 rounded-2xl flex items-center space-x-3">
+        <div className="bg-blue-600/20 border border-blue-500/50 p-4 rounded-2xl flex items-center justify-between space-x-4">
           <div>
             <p className="text-xs text-blue-400 uppercase font-bold">Buying Power</p>
             <p className="text-2xl font-mono font-bold">${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
+          <button
+            onClick={handleResetBalance}
+            title="Reset buying power back to $5,000"
+            className="text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Reset $5k
+          </button>
         </div>
       </div>
 

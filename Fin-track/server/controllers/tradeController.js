@@ -46,6 +46,10 @@ export const executeTrade = async (req, res) => {
       });
     }
 
+    if (typeof user.balance !== "number" || isNaN(user.balance)) {
+      user.balance = 5000;
+    }
+
     let holding = await Holding.findOne({
       user: userId,
       symbol: symbol.toUpperCase(),
