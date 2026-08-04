@@ -48,6 +48,7 @@ export const executeTrade = async (req, res) => {
 
     if (typeof user.balance !== "number" || isNaN(user.balance) || user.balance == null) {
       user.balance = 5000;
+      await User.findByIdAndUpdate(userId, { balance: 5000 });
     }
 
     let holding = await Holding.findOne({

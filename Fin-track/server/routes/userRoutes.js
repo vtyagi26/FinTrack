@@ -12,8 +12,8 @@ router.get("/profile", protect, async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (typeof user.balance !== "number" || isNaN(user.balance) || user.balance == null) {
-      await User.findByIdAndUpdate(req.user._id, { balance: 5000 });
       user.balance = 5000;
+      await User.findByIdAndUpdate(req.user._id, { balance: 5000 });
     }
     res.json(user);
   } catch (err) {

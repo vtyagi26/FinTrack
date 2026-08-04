@@ -29,7 +29,8 @@ const MarketAnalytics = () => {
         const holdData = await holdRes.json();
         if (userRes.ok) {
           const userData = await userRes.json();
-          setUserBalance(userData.balance ?? 5000);
+          const validBalance = (typeof userData.balance === "number" && !isNaN(userData.balance) && userData.balance !== null) ? userData.balance : 5000;
+          setUserBalance(validBalance);
         }
 
         const actualSnapData = Array.isArray(snapData) ? snapData : snapData.data || [];
