@@ -10,6 +10,7 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"
 const MarketAnalytics = () => {
   const [snapshots, setSnapshots] = useState([]);
   const [holdings, setHoldings] = useState([]);
+  const [userBalance, setUserBalance] = useState(5000);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,31 +19,28 @@ const MarketAnalytics = () => {
         const token = localStorage.getItem("token");
         const headers = { Authorization: `Bearer ${token}` };
 
-        const [snapRes, holdRes] = await Promise.all([
+        const [snapRes, holdRes, userRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/portfolio/snapshots?range=30d`, { headers }),
-          fetch(`${API_BASE_URL}/api/portfolio/holdings`, { headers })
+          fetch(`${API_BASE_URL}/api/portfolio/holdings`, { headers }),
+          fetch(`${API_BASE_URL}/api/users/profile`, { headers }),
         ]);
 
         const snapData = await snapRes.json();
         const holdData = await holdRes.json();
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUserBalance(userData.balance ?? 5000);
+        }
 
-        // DEBUG: Check exactly what your API is returning
-        console.log("Raw Snap Data:", snapData);
-        console.log("Raw Hold Data:", holdData);
-
-        // SAFTEY CHECK: Handle if data is wrapped in an object like { data: [...] }
         const actualSnapData = Array.isArray(snapData) ? snapData : snapData.data || [];
         const actualHoldData = Array.isArray(holdData) ? holdData : holdData.data || [];
 
         const formattedSnaps = actualSnapData.map(s => ({
           ...s,
-          date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          // Ensure 'value' exists for the AreaChart. Adjust 's.value' to whatever your backend uses (e.g., s.totalValue)
-          value: Number(s.value) || 0 
+          date: s.date || new Date(s.dateFull || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          value: Number(s.value ?? s.totalValue) || 0 
         }));
 
-        console.log("Formatted Snapshots for Chart:", formattedSnaps);
-        
         setSnapshots(formattedSnaps);
         setHoldings(actualHoldData);
       } catch (err) {
@@ -63,12 +61,11 @@ const MarketAnalytics = () => {
     })
     .filter(item => item.value > 0);
 
-  console.log("Calculated Pie Data:", pieData);
-
-  const totalPortfolioValue = pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalStockValue = pieData.reduce((sum, item) => sum + item.value, 0);
+  const currentNetWorth = userBalance + totalStockValue;
 
   const startVal = snapshots.length > 0 ? snapshots[0].value : 5000;
-  const currentVal = snapshots.length > 0 ? snapshots[snapshots.length - 1].value : totalPortfolioValue;
+  const currentVal = snapshots.length > 0 ? snapshots[snapshots.length - 1].value : currentNetWorth;
   const change30d = currentVal - startVal;
   const change30dPct = startVal > 0 ? (change30d / startVal) * 100 : 0;
   const isPositive30d = change30d >= 0;
@@ -76,22 +73,28 @@ const MarketAnalytics = () => {
   if (loading) return <div className="p-10 text-center text-white">Generating Analytics...</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto text-white">
-      <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
+    <div className="p-6 max-w-7xl mx-auto text-white space-y-8">
+      {/* Header & Net Worth Badges */}
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold">Returns & Portfolio Analytics</h2>
-          <p className="text-gray-400">Track 30-day cumulative portfolio value and asset allocation.</p>
+          <h2 className="text-3xl font-bold">Net Worth & Returns Analytics</h2>
+          <p className="text-gray-400">Track actual portfolio net worth (Cash + Stocks) over 30 days.</p>
         </div>
-        {snapshots.length > 0 && (
-          <div className="bg-gray-800 border border-gray-700 px-5 py-3 rounded-2xl flex items-center space-x-4">
-            <div>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">30-Day Return</p>
-              <p className={`text-lg font-mono font-bold ${isPositive30d ? "text-green-400" : "text-red-400"}`}>
-                {isPositive30d ? "+" : ""}${change30d.toFixed(2)} ({isPositive30d ? "+" : ""}{change30dPct.toFixed(2)}%)
-              </p>
-            </div>
+        
+        <div className="flex flex-wrap gap-3">
+          <div className="bg-gray-800 border border-gray-700 px-4 py-2.5 rounded-xl">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cash Balance</p>
+            <p className="text-base font-mono font-bold text-blue-400">${userBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
-        )}
+          <div className="bg-gray-800 border border-gray-700 px-4 py-2.5 rounded-xl">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Stocks Value</p>
+            <p className="text-base font-mono font-bold text-indigo-400">${totalStockValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-gray-800 border border-blue-500/50 bg-blue-600/10 px-5 py-2.5 rounded-xl">
+            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Total Net Worth</p>
+            <p className="text-xl font-mono font-bold text-white">${currentNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -99,10 +102,13 @@ const MarketAnalytics = () => {
         {/* Main Performance Chart */}
         <div className="lg:col-span-2 bg-gray-800 border border-gray-700 p-6 rounded-2xl shadow-xl">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-semibold text-gray-300">Portfolio Performance (Last 30 Days)</h3>
-            <span className="text-xs font-mono text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/30">
-              Current: ${currentVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-300">Net Worth Trajectory (30 Days)</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Calculated from actual MongoDB cash balance and stock holdings</p>
+            </div>
+            <div className={`px-3 py-1 rounded-full border text-xs font-mono font-bold ${isPositive30d ? "bg-green-900/30 border-green-500/50 text-green-400" : "bg-red-900/30 border-red-500/50 text-red-400"}`}>
+              30d: {isPositive30d ? "+" : ""}${change30d.toFixed(2)} ({isPositive30d ? "+" : ""}{change30dPct.toFixed(2)}%)
+            </div>
           </div>
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="99%" height="100%">

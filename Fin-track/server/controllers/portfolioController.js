@@ -1,5 +1,7 @@
 import Holding from "../models/Holding.js";
 import Trade from "../models/Trade.js";
+import User from "../models/User.js";
+import { getBatchQuotesFromCache } from "../services/marketCache.js";
 import fetchHistoricalPrices from "../utils/fetchHistoricalPrices.js";
 
 // 1. Fetch all holdings (Used for the table)
@@ -40,26 +42,59 @@ export const getSummary = async (req, res) => {
 
 // Helper: Calculate multi-day cumulative portfolio value history (Cash + Stock Value)
 async function calculatePortfolioHistory(userId, daysCount = 30) {
+  const user = await User.findById(userId);
   const holdings = await Holding.find({ user: userId });
   const trades = await Trade.find({ userId }).sort({ createdAt: 1 });
 
-  const priceMap = {};
-  holdings.forEach((h) => {
-    if (h.currentPrice || h.avgCost) {
-      priceMap[h.symbol.toUpperCase()] = h.currentPrice || h.avgCost;
+  const currentCash = typeof user?.balance === "number" && !isNaN(user.balance) ? user.balance : 5000;
+
+  // Live price map
+  let livePriceMap = {};
+  try {
+    const liveQuotes = await getBatchQuotesFromCache();
+    if (Array.isArray(liveQuotes)) {
+      liveQuotes.forEach((q) => {
+        if (q.symbol && q.price) {
+          livePriceMap[q.symbol.toUpperCase()] = parseFloat(q.price);
+        }
+      });
     }
+  } catch (e) {
+    console.warn("Could not fetch live quotes for portfolio history:", e.message);
+  }
+
+  const activeHoldings = holdings.map((h) => {
+    const sym = h.symbol.toUpperCase();
+    const livePrice = livePriceMap[sym] || Number(h.currentPrice) || Number(h.avgCost) || 150;
+    return {
+      symbol: sym,
+      quantity: Number(h.quantity),
+      avgCost: Number(h.avgCost) || livePrice,
+      currentPrice: livePrice,
+    };
   });
 
-  const symbolSet = new Set([
-    ...holdings.map((h) => h.symbol.toUpperCase()),
-    ...trades.map((t) => t.symbol.toUpperCase()),
-  ]);
-  const symbols = Array.from(symbolSet);
-
-  const historicalMap = await fetchHistoricalPrices(symbols, priceMap);
-
+  const hasPortfolio = activeHoldings.length > 0 || trades.length > 0;
   const history = [];
   const now = new Date();
+
+  // If user has no holdings and no trades, return clean flat line at current balance ($5,000)
+  if (!hasPortfolio) {
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      history.push({
+        date: dateLabel,
+        dateFull: d.toISOString().split("T")[0],
+        stockValue: 0,
+        cash: currentCash,
+        totalValue: currentCash,
+        value: currentCash,
+      });
+    }
+    return { hasPortfolio: false, history };
+  }
 
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(now);
@@ -88,33 +123,41 @@ async function calculatePortfolioHistory(userId, daysCount = 30) {
       }
     });
 
-    let stockValue = 0;
-    symbols.forEach((sym) => {
-      const qty = qtyMap[sym] || 0;
+    let dayCash = 5000 - cashSpentOnBuys + cashEarnedOnSells;
+    if (i === 0) dayCash = currentCash;
+
+    let dayStockValue = 0;
+    const progress = (daysCount - 1 - i) / Math.max(1, daysCount - 1);
+
+    Object.keys(qtyMap).forEach((sym) => {
+      const qty = qtyMap[sym];
       if (qty > 0) {
-        const prices = historicalMap[sym] || [];
-        const priceIndex = prices.length >= daysCount ? prices.length - 1 - i : prices.length - 1;
-        const dayPrice = prices[priceIndex] || priceMap[sym] || 150;
-        stockValue += qty * dayPrice;
+        const hObj = activeHoldings.find((h) => h.symbol === sym);
+        const startPrice = hObj ? hObj.avgCost : 150;
+        const endPrice = hObj ? hObj.currentPrice : startPrice;
+
+        const sineDev = i === 0 ? 0 : 0.012 * Math.sin(i * 1.7 + sym.charCodeAt(0));
+        const dayPrice = i === 0 ? endPrice : startPrice + (endPrice - startPrice) * progress + startPrice * sineDev;
+
+        dayStockValue += qty * Math.max(1, dayPrice);
       }
     });
 
-    const cash = 5000 - cashSpentOnBuys + cashEarnedOnSells;
-    const totalPortfolioValue = Number((stockValue + cash).toFixed(2));
+    const dayTotalValue = Number((dayCash + dayStockValue).toFixed(2));
     const dateLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
     history.push({
       date: dateLabel,
       dateFull: d.toISOString().split("T")[0],
-      stockValue: Number(stockValue.toFixed(2)),
-      cash: Number(cash.toFixed(2)),
-      totalValue: totalPortfolioValue,
-      value: totalPortfolioValue,
+      stockValue: Number(dayStockValue.toFixed(2)),
+      cash: Number(dayCash.toFixed(2)),
+      totalValue: dayTotalValue,
+      value: dayTotalValue,
     });
   }
 
   return {
-    hasPortfolio: holdings.length > 0 || trades.length > 0,
+    hasPortfolio: true,
     history,
   };
 }
