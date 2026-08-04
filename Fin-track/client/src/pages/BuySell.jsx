@@ -60,7 +60,7 @@ export default function BuySell() {
 
         if (userRes.ok) {
           const userData = await userRes.json();
-          const validBalance = (userData.balance === 10000 || userData.balance == null || isNaN(userData.balance)) ? 5000 : userData.balance;
+          const validBalance = (typeof userData.balance === "number" && !isNaN(userData.balance) && userData.balance !== null) ? userData.balance : 5000;
           setBalance(validBalance);
         }
         if (holdingsRes.ok) {
