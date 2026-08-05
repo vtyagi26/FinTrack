@@ -40,12 +40,33 @@ export default function QuantOptimizer({ holdings = [] }) {
       }
 
       const token = localStorage.getItem("token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
+      // Pre-flight health check to give a clear error if service is down
+      try {
+        const healthRes = await fetch(`${BACKEND_URL}/quant/health`, { headers });
+        const healthData = await healthRes.json();
+        if (!healthRes.ok || healthData.status !== "ok") {
+          throw new Error(
+            `Quant service unreachable at: ${healthData.quantServiceUrl || "unknown URL"}. ` +
+            (healthData.error || "Check that QUANT_SERVICE_URL is set correctly on your server.")
+          );
+        }
+      } catch (healthErr) {
+        // Only throw if it's our structured health error, not a network error
+        if (healthErr.message.includes("Quant service unreachable")) {
+          throw healthErr;
+        }
+        // Otherwise continue — the health endpoint itself may not be deployed yet
+        console.warn("Health check failed (may be old deploy):", healthErr.message);
+      }
+
       const response = await fetch(`${BACKEND_URL}/quant/optimize`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers,
         body: JSON.stringify({
           holdings,
           riskFreeRate: 0.06,
@@ -67,16 +88,10 @@ export default function QuantOptimizer({ holdings = [] }) {
           rawErrorStr = data.message;
         }
 
-        let errMsg = "Optimization failed. Please try again.";
+        let errMsg = data.error || data.message || "Optimization failed. Please try again.";
 
         if (rawErrorStr.includes("<html") || rawErrorStr.includes("<!DOCTYPE") || rawErrorStr.includes("Bad Gateway") || rawErrorStr.includes("502")) {
-          errMsg = "The Quant Optimization microservice is currently unavailable (502 Bad Gateway). If hosted on Render, it may be waking up from sleep mode. Please try again in 30 seconds.";
-        } else if (typeof data.error === "string" && data.error) {
-          errMsg = data.error;
-        } else if (data.error?.detail) {
-          errMsg = data.error.detail;
-        } else if (data.message) {
-          errMsg = data.message;
+          errMsg = data.error || `The Quant Optimization service is unavailable (502). If on Render, the Python service may be waking up. Try again in 30 seconds.`;
         }
 
         throw new Error(errMsg);
