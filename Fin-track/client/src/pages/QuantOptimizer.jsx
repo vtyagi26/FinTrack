@@ -39,12 +39,13 @@ export default function QuantOptimizer({ holdings = [] }) {
         throw new Error("At least 2 holdings are required to run portfolio optimization.");
       }
 
+      const token = localStorage.getItem("token");
       const response = await fetch(`${BACKEND_URL}/quant/optimize`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        credentials: "include",
         body: JSON.stringify({
           holdings,
           riskFreeRate: 0.06,

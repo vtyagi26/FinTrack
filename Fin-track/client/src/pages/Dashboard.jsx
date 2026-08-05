@@ -287,19 +287,34 @@ export default function Dashboard() {
 
       const data = await res.json();
 
+      // Get live prices from the stock cache to give QuantOptimizer accurate prices
+      let livePriceMap = {};
+      try {
+        const cached = localStorage.getItem("stock_cache_v1");
+        if (cached) {
+          const { data: cachedStocks } = JSON.parse(cached);
+          if (Array.isArray(cachedStocks)) {
+            cachedStocks.forEach((s) => {
+              if (s.symbol && s.price) livePriceMap[s.symbol.toUpperCase()] = parseFloat(s.price);
+            });
+          }
+        }
+      } catch (_) {}
+
       setHoldings(
         data.map((holding) => ({
           ticker: holding.symbol,
           quantity: holding.quantity,
+          // Prefer live market price; fall back to stored price then avgCost
           currentPrice:
-            holding.currentPrice ??
+            livePriceMap[holding.symbol?.toUpperCase()] ||
+            holding.currentPrice ||
             holding.avgCost,
         }))
       );
     } catch (err) {
       console.error(err);
     }
-    console.log(holdings);
   };
 
   const fetchNotifications = async () => {

@@ -12,7 +12,7 @@ export const getHoldings = async (req, res) => {
       symbol: h.symbol,
       quantity: h.quantity,
       avgCost: h.avgCost,
-      currentPriceAtTrade: h.currentPrice,
+      currentPrice: h.currentPrice || h.avgCost,
     })));
   } catch (err) {
     res.status(500).json({ message: "Error fetching holdings from MongoDB" });

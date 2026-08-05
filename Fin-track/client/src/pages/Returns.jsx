@@ -11,6 +11,7 @@ const MarketAnalytics = () => {
   const [snapshots, setSnapshots] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [userBalance, setUserBalance] = useState(5000);
+  const [livePrices, setLivePrices] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +45,21 @@ const MarketAnalytics = () => {
 
         setSnapshots(formattedSnaps);
         setHoldings(actualHoldData);
+
+        // Read live prices from the stock cache
+        try {
+          const cached = localStorage.getItem("stock_cache_v1");
+          if (cached) {
+            const { data: cachedStocks } = JSON.parse(cached);
+            if (Array.isArray(cachedStocks)) {
+              const priceMap = {};
+              cachedStocks.forEach((s) => {
+                if (s.symbol && s.price) priceMap[s.symbol.toUpperCase()] = parseFloat(s.price);
+              });
+              setLivePrices(priceMap);
+            }
+          }
+        } catch (_) {}
       } catch (err) {
         console.error("Analytics Error:", err);
       } finally {
@@ -56,13 +72,18 @@ const MarketAnalytics = () => {
 
   const pieData = holdings
     .map(h => {
-      const price = Number(h.currentPrice) || Number(h.avgCost) || 0;
+      const price = livePrices[h.symbol?.toUpperCase()] || Number(h.currentPrice) || Number(h.avgCost) || 0;
       const value = Number(h.quantity) * price;
-      return { name: h.symbol, value: parseFloat(value.toFixed(2)) };
+      return { name: h.symbol, value: parseFloat(value.toFixed(2)), avgCost: Number(h.avgCost) || 0, quantity: Number(h.quantity) };
     })
     .filter(item => item.value > 0);
 
   const totalStockValue = pieData.reduce((sum, item) => sum + item.value, 0);
+  const totalInvestedCost = pieData.reduce((sum, item) => sum + (item.avgCost * item.quantity), 0);
+  const unrealizedPnL = totalStockValue - totalInvestedCost;
+  const unrealizedPct = totalInvestedCost > 0 ? (unrealizedPnL / totalInvestedCost) * 100 : 0;
+  const isUnrealizedPositive = unrealizedPnL >= 0;
+
   const totalPortfolioValue = totalStockValue;
   const currentNetWorth = userBalance + totalStockValue;
 
@@ -91,6 +112,13 @@ const MarketAnalytics = () => {
           <div className="bg-gray-800 border border-gray-700 px-4 py-2.5 rounded-xl">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Stocks Value</p>
             <p className="text-base font-mono font-bold text-indigo-400">${totalStockValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className={`px-4 py-2.5 rounded-xl border ${isUnrealizedPositive ? "bg-green-900/20 border-green-500/40" : "bg-red-900/20 border-red-500/40"}`}>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Unrealized P&amp;L</p>
+            <p className={`text-base font-mono font-bold ${isUnrealizedPositive ? "text-green-400" : "text-red-400"}`}>
+              {isUnrealizedPositive ? "+" : ""}{unrealizedPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-xs ml-1 opacity-70">({isUnrealizedPositive ? "+" : ""}{unrealizedPct.toFixed(2)}%)</span>
+            </p>
           </div>
           <div className="bg-gray-800 border border-blue-500/50 bg-blue-600/10 px-5 py-2.5 rounded-xl">
             <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Total Net Worth</p>
