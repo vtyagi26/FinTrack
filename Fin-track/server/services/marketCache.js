@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// 5 minutes cache TTL for real data
+// Cache TTL — 5 minutes for real data
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 let cache = {
@@ -9,9 +9,10 @@ let cache = {
   isFallback: false,
 };
 
-// Tracks the last diagnostic info for the /debug endpoint
+// Diagnostic state — exposed via /api/market/debug
 export let lastFetchDiag = {
   attemptedAt: null,
+  source: null, // "finnhub" or "alphavantage"
   apiKeyPresent: false,
   apiKeyPrefix: null,
   symbolResults: [],
@@ -20,56 +21,15 @@ export let lastFetchDiag = {
 
 const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "TSLA"];
 
-/**
- * Fetch a single quote from AlphaVantage with retry on timeout.
- * Render free tier can have slow cold-start DNS/network.
- */
-async function fetchQuoteWithRetry(symbol, apiKey, attempt = 1) {
-  const TIMEOUTS = [10000, 20000]; // 10s first try, 20s on retry
-  const timeout = TIMEOUTS[Math.min(attempt - 1, TIMEOUTS.length - 1)];
+// ─── Finnhub (Primary — 60 req/min free, no daily cap) ───────────────────────
+async function fetchFromFinnhub(symbols) {
+  const token = process.env.FINNHUB_API_KEY;
+  if (!token) return null; // Signal: key not available, try next source
 
-  try {
-    const response = await axios.get("https://www.alphavantage.co/query", {
-      params: { function: "GLOBAL_QUOTE", symbol, apikey: apiKey },
-      timeout,
-    });
-    return response.data;
-  } catch (err) {
-    if (attempt < 2 && (err.code === "ECONNABORTED" || err.code === "ETIMEDOUT" || err.code === "ECONNRESET")) {
-      console.warn(`[MarketCache] Timeout for ${symbol} (attempt ${attempt}). Retrying with ${TIMEOUTS[1]}ms...`);
-      await new Promise((r) => setTimeout(r, 2000));
-      return fetchQuoteWithRetry(symbol, apiKey, attempt + 1);
-    }
-    throw err;
-  }
-}
-
-export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
-  const now = Date.now();
-
-  // Serve real cached data within TTL
-  if (cache.data && !cache.isFallback && now - cache.timestamp < CACHE_TTL_MS) {
-    console.log(`[MarketCache] Serving ${cache.data.length} quotes from cache (age: ${Math.round((now - cache.timestamp) / 1000)}s)`);
-    return cache.data;
-  }
-
-  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-
-  // Update diag
-  lastFetchDiag.attemptedAt = new Date().toISOString();
-  lastFetchDiag.apiKeyPresent = !!apiKey;
-  lastFetchDiag.apiKeyPrefix = apiKey ? apiKey.slice(0, 6) + "..." : null;
-  lastFetchDiag.symbolResults = [];
-  lastFetchDiag.error = null;
-
-  if (!apiKey) {
-    const msg = "ALPHA_VANTAGE_API_KEY is NOT SET in environment variables!";
-    console.error(`[MarketCache] ${msg}`);
-    lastFetchDiag.error = msg;
-    return getFallbackData();
-  }
-
-  console.log(`[MarketCache] Fetching fresh quotes from AlphaVantage (key: ${apiKey.slice(0, 6)}...) for: ${symbols.join(", ")}`);
+  console.log(`[MarketCache] Using Finnhub (key: ${token.slice(0, 6)}...)`);
+  lastFetchDiag.source = "finnhub";
+  lastFetchDiag.apiKeyPresent = true;
+  lastFetchDiag.apiKeyPrefix = token.slice(0, 6) + "...";
 
   const results = [];
 
@@ -78,11 +38,74 @@ export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
     const symDiag = { symbol, status: "pending", price: null, detail: null };
 
     try {
-      const raw = await fetchQuoteWithRetry(symbol, apiKey);
+      const response = await axios.get("https://finnhub.io/api/v1/quote", {
+        params: { symbol, token },
+        timeout: 8000,
+      });
+
+      const { c: current, h: high, l: low, dp: changePercent } = response.data;
+
+      if (current && current > 0) {
+        const sign = changePercent >= 0 ? "+" : "";
+        results.push({
+          symbol,
+          price: current.toFixed(2),
+          high: (high || current).toFixed(2),
+          low: (low || current).toFixed(2),
+          changePercent: `${sign}${changePercent?.toFixed(4) ?? "0.0000"}%`,
+        });
+        symDiag.status = "ok";
+        symDiag.price = current.toFixed(2);
+        console.log(`[MarketCache] ✓ ${symbol}: $${current.toFixed(2)} (${sign}${changePercent?.toFixed(2)}%)`);
+      } else {
+        symDiag.status = "empty_response";
+        symDiag.detail = `c=${current}`;
+        console.warn(`[MarketCache] Finnhub returned zero/null price for ${symbol}`);
+      }
+    } catch (err) {
+      symDiag.status = "exception";
+      symDiag.detail = err.message;
+      console.error(`[MarketCache] Finnhub error for ${symbol}: ${err.message}`);
+    }
+
+    lastFetchDiag.symbolResults.push(symDiag);
+
+    // Finnhub free tier: 60/min → ~1 per second is safe
+    if (i < symbols.length - 1) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  return results.length > 0 ? results : null;
+}
+
+// ─── Alpha Vantage (Fallback — 25 req/day free) ───────────────────────────────
+async function fetchFromAlphaVantage(symbols) {
+  const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
+  if (!apiKey) return null;
+
+  console.log(`[MarketCache] Trying Alpha Vantage (key: ${apiKey.slice(0, 6)}...) as fallback`);
+  lastFetchDiag.source = "alphavantage";
+  lastFetchDiag.apiKeyPresent = true;
+  lastFetchDiag.apiKeyPrefix = apiKey.slice(0, 6) + "...";
+
+  const results = [];
+
+  for (let i = 0; i < symbols.length; i++) {
+    const symbol = symbols[i];
+    const symDiag = { symbol, status: "pending", price: null, detail: null };
+
+    try {
+      const response = await axios.get("https://www.alphavantage.co/query", {
+        params: { function: "GLOBAL_QUOTE", symbol, apikey: apiKey },
+        timeout: 12000,
+      });
+
+      const raw = response.data;
 
       if (raw.Note || raw.Information) {
         const msg = (raw.Note || raw.Information).slice(0, 200);
-        console.warn(`[MarketCache] RATE LIMIT for ${symbol}: ${msg}`);
+        console.warn(`[MarketCache] Alpha Vantage RATE LIMIT for ${symbol}: ${msg}`);
         symDiag.status = "rate_limited";
         symDiag.detail = msg;
         lastFetchDiag.symbolResults.push(symDiag);
@@ -90,7 +113,6 @@ export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
       }
 
       if (raw["Error Message"]) {
-        console.warn(`[MarketCache] API error for ${symbol}: ${raw["Error Message"]}`);
         symDiag.status = "api_error";
         symDiag.detail = raw["Error Message"];
         lastFetchDiag.symbolResults.push(symDiag);
@@ -109,43 +131,67 @@ export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
         });
         symDiag.status = "ok";
         symDiag.price = price;
-        console.log(`[MarketCache] ✓ ${symbol}: $${price}`);
+        console.log(`[MarketCache] ✓ ${symbol}: $${price} (via Alpha Vantage)`);
       } else {
         symDiag.status = "empty_response";
         symDiag.detail = JSON.stringify(raw).slice(0, 200);
-        console.warn(`[MarketCache] Empty quote for ${symbol}. Raw: ${symDiag.detail}`);
       }
     } catch (err) {
       symDiag.status = "exception";
       symDiag.detail = err.message;
-      console.error(`[MarketCache] Exception for ${symbol}: ${err.message}`);
+      console.error(`[MarketCache] Alpha Vantage error for ${symbol}: ${err.message}`);
     }
 
     lastFetchDiag.symbolResults.push(symDiag);
 
     if (i < symbols.length - 1) {
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1500)); // AV rate limit: 5/min
     }
   }
 
-  if (results.length > 0) {
+  return results.length > 0 ? results : null;
+}
+
+// ─── Main export ─────────────────────────────────────────────────────────────
+export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
+  const now = Date.now();
+
+  if (cache.data && !cache.isFallback && now - cache.timestamp < CACHE_TTL_MS) {
+    console.log(`[MarketCache] Serving ${cache.data.length} quotes from cache (age: ${Math.round((now - cache.timestamp) / 1000)}s)`);
+    return cache.data;
+  }
+
+  lastFetchDiag.attemptedAt = new Date().toISOString();
+  lastFetchDiag.symbolResults = [];
+  lastFetchDiag.error = null;
+
+  console.log(`[MarketCache] Cache miss — fetching fresh quotes for: ${symbols.join(", ")}`);
+
+  // Try Finnhub first (generous rate limits), fall back to Alpha Vantage
+  let results = await fetchFromFinnhub(symbols);
+
+  if (!results) {
+    results = await fetchFromAlphaVantage(symbols);
+  }
+
+  if (results && results.length > 0) {
     cache = { data: results, timestamp: Date.now(), isFallback: false };
-    console.log(`[MarketCache] ✓ Cached ${results.length} real quotes.`);
+    console.log(`[MarketCache] ✓ Cached ${results.length} real quotes via ${lastFetchDiag.source}.`);
     return cache.data;
   }
 
-  // No real data — serve stale real cache if available
+  // Serve stale real cache rather than fallback
   if (cache.data && !cache.isFallback) {
-    console.warn("[MarketCache] API returned nothing. Serving stale real cache.");
+    console.warn("[MarketCache] All sources failed. Serving stale real cache.");
     return cache.data;
   }
 
-  console.error("[MarketCache] All fetches failed — returning fallback mock data.");
+  console.error("[MarketCache] ❌ All sources failed — returning approximate fallback data. Add FINNHUB_API_KEY to Render env vars.");
+  lastFetchDiag.error = "All API sources failed. No FINNHUB_API_KEY or ALPHA_VANTAGE_API_KEY working.";
   return getFallbackData();
 }
 
-// ─── Fallback data with APPROXIMATE current prices ───────────────────────────
-// These are updated periodically — check /api/market/debug if you see these.
+// Updated to current market prices (Aug 2026) — only shown if ALL APIs fail
 function getFallbackData() {
   return [
     { symbol: "AAPL", price: "311.00", high: "311.71", low: "305.67", changePercent: "+0.52%" },
