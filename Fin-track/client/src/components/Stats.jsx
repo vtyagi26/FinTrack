@@ -17,9 +17,9 @@ export default function MarketProblems() {
 
         <div className="flex justify-center">
           <img
-            src="\public\stimg.jpg"
+            src="/stock_chaos.png"
             alt="Stock market chaos"
-            className="rounded-lg shadow-lg  w-full max-w-[600px] md:max-w-[800px] lg:max-w-[900px] object-cover"
+            className="rounded-xl shadow-2xl shadow-red-950/40 border border-gray-800 w-full max-w-[600px] md:max-w-[800px] lg:max-w-[900px] object-cover hover:scale-[1.02] transition-transform duration-300"
           />
         </div>
       </div>
