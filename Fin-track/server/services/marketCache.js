@@ -1,64 +1,84 @@
 import axios from "axios";
 
-// 3 minutes cache TTL (180,000 ms) — only for real API data
-const CACHE_TTL_MS = 3 * 60 * 1000;
+// 5 minutes cache TTL for real data
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 let cache = {
   data: null,
   timestamp: 0,
-  isFallback: false, // true = data came from mock, do NOT serve beyond TTL
+  isFallback: false,
 };
 
 const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "TSLA"];
 
+/**
+ * Fetch a single quote from AlphaVantage with retry on timeout.
+ * Render free tier can have slow cold-start DNS/network — retry once with
+ * a longer timeout before giving up on a symbol.
+ */
+async function fetchQuoteWithRetry(symbol, apiKey, attempt = 1) {
+  const TIMEOUTS = [10000, 20000]; // 10s first try, 20s on retry
+  const timeout = TIMEOUTS[Math.min(attempt - 1, TIMEOUTS.length - 1)];
+
+  try {
+    const response = await axios.get("https://www.alphavantage.co/query", {
+      params: {
+        function: "GLOBAL_QUOTE",
+        symbol,
+        apikey: apiKey,
+      },
+      timeout,
+    });
+    return response.data;
+  } catch (err) {
+    if (attempt < 2 && (err.code === "ECONNABORTED" || err.code === "ETIMEDOUT" || err.code === "ECONNRESET")) {
+      console.warn(`AlphaVantage timeout for ${symbol} (attempt ${attempt}). Retrying with longer timeout...`);
+      await new Promise((r) => setTimeout(r, 2000));
+      return fetchQuoteWithRetry(symbol, apiKey, attempt + 1);
+    }
+    throw err;
+  }
+}
+
 export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
   const now = Date.now();
 
-  // Only serve real cached data within TTL — never serve stale fallback data
+  // Serve real cached data within TTL
   if (cache.data && !cache.isFallback && now - cache.timestamp < CACHE_TTL_MS) {
-    console.log("Serving stock quotes from server 3-min cache...");
+    console.log(`[MarketCache] Serving ${cache.data.length} quotes from cache (age: ${Math.round((now - cache.timestamp) / 1000)}s)`);
     return cache.data;
   }
-
-  console.log("Cache expired or empty. Fetching fresh quotes from AlphaVantage...");
 
   const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
 
   if (!apiKey) {
-    console.warn("ALPHA_VANTAGE_API_KEY is not set. Returning fallback mock data.");
+    console.error("[MarketCache] ALPHA_VANTAGE_API_KEY is not set in environment! Returning fallback mock data.");
     return getFallbackData();
   }
+
+  console.log(`[MarketCache] Fetching fresh quotes from AlphaVantage for: ${symbols.join(", ")}`);
 
   const results = [];
 
   for (let i = 0; i < symbols.length; i++) {
     const symbol = symbols[i];
     try {
-      const response = await axios.get("https://www.alphavantage.co/query", {
-        params: {
-          function: "GLOBAL_QUOTE",
-          symbol,
-          apikey: apiKey,
-        },
-        timeout: 8000,
-      });
+      const raw = await fetchQuoteWithRetry(symbol, apiKey);
 
-      const raw = response.data;
-
-      // Detect rate-limit / info messages from AlphaVantage
+      // Rate-limit / info messages
       if (raw.Note || raw.Information) {
-        console.warn(`AlphaVantage rate-limit notice for ${symbol}: ${raw.Note || raw.Information}`);
-        // Don't break — try next symbol, may still succeed if partially under limit
+        const msg = raw.Note || raw.Information;
+        console.warn(`[MarketCache] AlphaVantage rate-limit for ${symbol}: ${msg.slice(0, 120)}`);
         continue;
       }
 
       if (raw["Error Message"]) {
-        console.warn(`AlphaVantage error for ${symbol}: ${raw["Error Message"]}`);
+        console.warn(`[MarketCache] AlphaVantage error for ${symbol}: ${raw["Error Message"]}`);
         continue;
       }
 
       const quote = raw["Global Quote"];
-      if (quote && quote["05. price"]) {
+      if (quote && quote["05. price"] && parseFloat(quote["05. price"]) > 0) {
         results.push({
           symbol: quote["01. symbol"] || symbol,
           price: parseFloat(quote["05. price"]).toFixed(2),
@@ -66,38 +86,34 @@ export async function getBatchQuotesFromCache(symbols = DEFAULT_SYMBOLS) {
           low: parseFloat(quote["04. low"]).toFixed(2),
           changePercent: quote["10. change percent"] || "0.00%",
         });
+        console.log(`[MarketCache] Got ${symbol}: $${parseFloat(quote["05. price"]).toFixed(2)}`);
       } else {
-        console.warn(`Empty Global Quote for ${symbol}. Skipping.`);
+        console.warn(`[MarketCache] Empty or zero price for ${symbol}. Raw:`, JSON.stringify(raw).slice(0, 200));
       }
     } catch (err) {
-      console.error(`Error fetching AlphaVantage quote for ${symbol}:`, err.message);
+      console.error(`[MarketCache] Failed fetching ${symbol}: ${err.message}`);
     }
 
-    // Respect AlphaVantage free tier rate limit (5 calls/min)
+    // Respect AlphaVantage free tier rate limit (5 calls/min = 1 per 12s; 1.5s delay is safe)
     if (i < symbols.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 
-  // Successfully fetched real data — cache it
   if (results.length > 0) {
-    cache = {
-      data: results,
-      timestamp: Date.now(),
-      isFallback: false,
-    };
-    console.log(`Cached ${results.length} fresh quotes from AlphaVantage.`);
+    cache = { data: results, timestamp: Date.now(), isFallback: false };
+    console.log(`[MarketCache] Cached ${results.length} real quotes from AlphaVantage.`);
     return cache.data;
   }
 
-  // API returned nothing real — serve previous real cached data if available
+  // No real data — serve stale real cache if available
   if (cache.data && !cache.isFallback) {
-    console.log("API fetch returned no data; serving last known real cache.");
+    console.warn("[MarketCache] API returned nothing. Serving stale real cache.");
     return cache.data;
   }
 
-  // Last resort: return mock data but do NOT cache it (so next request retries the API)
-  console.warn("Returning fallback mock data. Will retry API on next request.");
+  // Absolute last resort
+  console.error("[MarketCache] All fetches failed. Returning hardcoded fallback — check your ALPHA_VANTAGE_API_KEY on Render.");
   return getFallbackData();
 }
 
@@ -109,8 +125,7 @@ function getFallbackData() {
   ];
 }
 
-// Exported so routes can force a cache bust (e.g. after key rotation)
 export function clearMarketCache() {
   cache = { data: null, timestamp: 0, isFallback: false };
-  console.log("Market cache manually cleared.");
+  console.log("[MarketCache] Cache manually cleared.");
 }

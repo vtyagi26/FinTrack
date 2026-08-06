@@ -65,7 +65,7 @@ router.post("/optimize", async (req, res) => {
     const response = await axios.post(
       `${QUANT_SERVICE_URL}/optimize`,
       quantPayload,
-      { timeout: 30000 }
+      { timeout: 90000 } // 90s — Render free tier cold boot can take ~50s
     );
 
     return res.status(200).json(response.data);

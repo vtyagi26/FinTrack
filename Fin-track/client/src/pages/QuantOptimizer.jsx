@@ -25,15 +25,13 @@ export default function QuantOptimizer({ holdings = [] }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [statusMsg, setStatusMsg] = useState("");
 
   const runOptimization = async () => {
-
-    console.log("Holdings received:");
-    console.table(holdings);
-
     try {
       setLoading(true);
       setErrorMessage("");
+      setStatusMsg("Checking quant service...");
 
       if (!holdings || holdings.length < 2) {
         throw new Error("At least 2 holdings are required to run portfolio optimization.");
@@ -45,62 +43,70 @@ export default function QuantOptimizer({ holdings = [] }) {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
-      // Pre-flight health check to give a clear error if service is down
-      try {
-        const healthRes = await fetch(`${BACKEND_URL}/quant/health`, { headers });
-        const healthData = await healthRes.json();
-        if (!healthRes.ok || healthData.status !== "ok") {
-          throw new Error(
-            `Quant service unreachable at: ${healthData.quantServiceUrl || "unknown URL"}. ` +
-            (healthData.error || "Check that QUANT_SERVICE_URL is set correctly on your server.")
-          );
+      // Helper: run the optimize request
+      const doOptimize = async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s for Render cold boots
+        try {
+          const response = await fetch(`${BACKEND_URL}/quant/optimize`, {
+            method: "POST",
+            headers,
+            signal: controller.signal,
+            body: JSON.stringify({
+              holdings,
+              riskFreeRate: 0.06,
+              horizonDays: 252,
+              simulations: 1000,
+            }),
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
         }
-      } catch (healthErr) {
-        // Only throw if it's our structured health error, not a network error
-        if (healthErr.message.includes("Quant service unreachable")) {
-          throw healthErr;
-        }
-        // Otherwise continue — the health endpoint itself may not be deployed yet
-        console.warn("Health check failed (may be old deploy):", healthErr.message);
+      };
+
+      setStatusMsg("Running optimization...");
+      let response = await doOptimize();
+
+      // If Render quant service was sleeping (502), wait and retry once
+      if (response.status === 502 || response.status === 503) {
+        setStatusMsg("Quant service is waking up on Render (this takes ~30s)... please wait.");
+        await new Promise((r) => setTimeout(r, 35000));
+        setStatusMsg("Retrying optimization...");
+        response = await doOptimize();
       }
 
-      const response = await fetch(`${BACKEND_URL}/quant/optimize`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          holdings,
-          riskFreeRate: 0.06,
-          horizonDays: 252,
-          simulations: 1000
-        })
-      });
-
       const data = await response.json();
-      
+
       if (!response.ok) {
         console.error("Backend quant error:", data);
-        let rawErrorStr = "";
-        if (typeof data.error === "string") {
-          rawErrorStr = data.error;
-        } else if (typeof data.error === "object") {
-          rawErrorStr = JSON.stringify(data.error);
-        } else if (typeof data.message === "string") {
-          rawErrorStr = data.message;
-        }
+        const rawErrorStr =
+          typeof data.error === "string" ? data.error :
+          typeof data.error === "object" ? JSON.stringify(data.error) :
+          typeof data.message === "string" ? data.message : "";
 
         let errMsg = data.error || data.message || "Optimization failed. Please try again.";
 
-        if (rawErrorStr.includes("<html") || rawErrorStr.includes("<!DOCTYPE") || rawErrorStr.includes("Bad Gateway") || rawErrorStr.includes("502")) {
-          errMsg = data.error || `The Quant Optimization service is unavailable (502). If on Render, the Python service may be waking up. Try again in 30 seconds.`;
+        if (rawErrorStr.includes("<html") || rawErrorStr.includes("<!DOCTYPE") ||
+            rawErrorStr.includes("Bad Gateway") || rawErrorStr.includes("502")) {
+          errMsg = "The Quant service is still waking up on Render. Please try again in 30 seconds.";
         }
 
         throw new Error(errMsg);
       }
 
+      setStatusMsg("");
       setResult(data);
     } catch (error) {
       console.error(error);
-      setErrorMessage(error.message || "Failed to run portfolio optimizer");
+      if (error.name === "AbortError") {
+        setErrorMessage("Request timed out (90s). The Quant service on Render may be under heavy load — please try again.");
+      } else {
+        setErrorMessage(error.message || "Failed to run portfolio optimizer");
+      }
+      setStatusMsg("");
     } finally {
       setLoading(false);
     }
@@ -159,6 +165,16 @@ export default function QuantOptimizer({ holdings = [] }) {
             {loading ? "Running..." : "Run Optimizer"}
           </button>
         </div>
+
+        {statusMsg && (
+          <div className="mt-4 flex items-center gap-3 text-blue-300 text-sm bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
+            <svg className="animate-spin h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            {statusMsg}
+          </div>
+        )}
 
         {holdings.length < 2 && (
           <p className="mt-4 text-sm text-red-400">
