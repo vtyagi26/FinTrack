@@ -8,14 +8,15 @@ import cors from "cors"; // enable cross origin res sharing -> any frontend can 
 import helmet from "helmet"; // secure headers
 import morgan from "morgan"; // logger middleware
 
-import portfolioRoutes from "./routes/portfolio.js"; //endpoints
-import marketRoutes from "./routes/market.js"; //endpoints
-import authRoutes from "./routes/authRoutes.js"; //endpoints
-import tradeRoutes from "./routes/trades.js"; //endpoints
+import portfolioRoutes from "./routes/portfolio.js";
+import marketRoutes from "./routes/market.js";
+import authRoutes from "./routes/authRoutes.js";
+import tradeRoutes from "./routes/trades.js";
 import userRoutes from "./routes/userRoutes.js";
-import watchlistRoutes from "./routes/watchlist.js"; // Import at top
+import watchlistRoutes from "./routes/watchlist.js";
 import quantRoutes from "./routes/quantRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import { getBatchQuotesFromCache } from "./services/marketCache.js";
 
 dotenv.config(); // loads env var
 
@@ -56,6 +57,17 @@ app.get("/", (req, res) => res.send("API running...")); // simple test route to 
 const PORT = process.env.PORT || 3002; // uses the port from .env or default 5000
 
 mongoose
-  .connect(process.env.MONGO_URI) // connects mongodb using connection string in env
-  .then(() => app.listen(PORT, () => console.log(`Server running on ${PORT}`))) // start express server
-  .catch((err) => console.error("MongoDB connection error:", err)); // logs error
+  .connect(process.env.MONGO_URI)
+  .then(() =>
+    app.listen(PORT, () => {
+      console.log(`Server running on ${PORT}`);
+      // Pre-warm market cache on startup so first user never gets fallback data
+      console.log("[Startup] Pre-fetching market data...");
+      getBatchQuotesFromCache().then((data) => {
+        console.log(`[Startup] Market cache warm-up: got ${data.length} quotes (first: ${data[0]?.symbol} $${data[0]?.price})`);
+      }).catch((err) => {
+        console.warn("[Startup] Market cache warm-up failed:", err.message);
+      });
+    })
+  )
+  .catch((err) => console.error("MongoDB connection error:", err));
