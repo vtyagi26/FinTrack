@@ -1,7 +1,9 @@
 import axios from "axios";
 
-// Persistent in-memory cache for historical prices
-const historicalPriceCache = {};
+// In-memory cache for historical prices with 1-hour TTL
+const historicalPriceCache = {};      // { TICKER: number[] }
+const historicalPriceCacheTime = {};  // { TICKER: timestamp ms }
+const HIST_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 // Default prices for common tickers if no live quote provided
 const DEFAULT_PRICES = {
@@ -32,10 +34,11 @@ async function fetchHistoricalPrices(tickers, priceMap = {}) {
     const anchorPrice = Number(priceMap[upperTicker]) || DEFAULT_PRICES[upperTicker] || 150;
 
     // ==========================
-    // CACHE HIT
+    // CACHE HIT (only within 1-hour TTL)
     // ==========================
-    if (historicalPriceCache[upperTicker] && historicalPriceCache[upperTicker].length >= 30) {
-      console.log(`Using cached historical prices for ${upperTicker}`);
+    const cacheAge = Date.now() - (historicalPriceCacheTime[upperTicker] || 0);
+    if (historicalPriceCache[upperTicker] && historicalPriceCache[upperTicker].length >= 30 && cacheAge < HIST_CACHE_TTL_MS) {
+      console.log(`Using cached historical prices for ${upperTicker} (age: ${Math.round(cacheAge / 60000)}min)`);
       prices[upperTicker] = historicalPriceCache[upperTicker];
       continue;
     }
@@ -62,7 +65,7 @@ async function fetchHistoricalPrices(tickers, priceMap = {}) {
       if (data.Note || data.Information || data["Error Message"]) {
         console.warn(`AlphaVantage rate limit/notice for ${upperTicker}. Using generated fallback history anchored at ${anchorPrice}.`);
         const fallback = generateFallbackPrices(anchorPrice);
-        historicalPriceCache[upperTicker] = fallback;
+        // Do NOT cache fallback data — let it retry on next request
         prices[upperTicker] = fallback;
         continue;
       }
@@ -71,7 +74,7 @@ async function fetchHistoricalPrices(tickers, priceMap = {}) {
       if (!timeSeries) {
         console.warn(`No Time Series data for ${upperTicker}. Using fallback history anchored at ${anchorPrice}.`);
         const fallback = generateFallbackPrices(anchorPrice);
-        historicalPriceCache[upperTicker] = fallback;
+        // Do NOT cache fallback data — let it retry on next request
         prices[upperTicker] = fallback;
         continue;
       }
@@ -82,13 +85,14 @@ async function fetchHistoricalPrices(tickers, priceMap = {}) {
       if (closePrices.length < 30) {
         console.warn(`Insufficient history for ${upperTicker}. Using fallback history.`);
         const fallback = generateFallbackPrices(anchorPrice);
-        historicalPriceCache[upperTicker] = fallback;
+        // Do NOT cache fallback data — let it retry on next request
         prices[upperTicker] = fallback;
         continue;
       }
 
-      // Save in RAM cache
+      // Save real data in RAM cache with timestamp
       historicalPriceCache[upperTicker] = closePrices;
+      historicalPriceCacheTime[upperTicker] = Date.now();
       prices[upperTicker] = closePrices;
 
       // Respect AlphaVantage free tier rate limit between requests
@@ -98,7 +102,7 @@ async function fetchHistoricalPrices(tickers, priceMap = {}) {
     } catch (err) {
       console.error(`Historical price fetch error for ${upperTicker}: ${err.message}. Using fallback anchored at ${anchorPrice}.`);
       const fallback = generateFallbackPrices(anchorPrice);
-      historicalPriceCache[upperTicker] = fallback;
+      // Do NOT cache fallback data from errors — let it retry on next request
       prices[upperTicker] = fallback;
     }
   }

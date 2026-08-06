@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getBatchQuotesFromCache } from "../services/marketCache.js";
+import { getBatchQuotesFromCache, clearMarketCache } from "../services/marketCache.js";
 
 export const getBatchQuotes = async (req, res) => {
   try {
@@ -30,4 +30,10 @@ export const getQuote = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: "Error fetching market quote" });
   }
+};
+
+// Force-clear the server-side market cache (call after rotating API key)
+export const bustCache = (req, res) => {
+  clearMarketCache();
+  res.json({ message: "Market cache cleared. Next request will fetch fresh data from AlphaVantage." });
 };

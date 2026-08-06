@@ -112,6 +112,21 @@ const DashboardHome = () => {
         setLoading(true);
         const token = localStorage.getItem("token");
 
+        // Check localStorage cache — only use if < 5 minutes old
+        const CACHE_TTL_MS = 5 * 60 * 1000;
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data: cachedData, timestamp } = JSON.parse(cached);
+          if (Array.isArray(cachedData) && cachedData.length > 0 && Date.now() - timestamp < CACHE_TTL_MS) {
+            setStocks(cachedData);
+            setLoading(false);
+            return;
+          } else {
+            // Cache is stale — remove it so we fetch fresh
+            localStorage.removeItem(CACHE_KEY);
+          }
+        }
+
         const res = await fetch(`${API_BASE_URL}/api/market/quotes`);
         const data = await res.json();
 
@@ -354,9 +369,8 @@ export default function Dashboard() {
       </div>
     );
   }
-console.log("Dashboard Holdings");
-console.table(holdings);
-    return (
+
+  return (
     <div className="flex min-h-screen bg-gray-900 text-white">
       <Sidebar
         handleLogout={handleLogout}
